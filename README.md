@@ -1,5 +1,14 @@
 # clitic
 
+[![Documentation](https://readthedocs.org/projects/clitic/badge/?version=latest)](https://clitic.readthedocs.io/)
+[![PyPI version](https://badge.fury.io/py/clitic.svg)](https://badge.fury.io/py/clitic)
+[![PyPI pyversions](https://img.shields.io/pypi/pyversions/clitic.svg)](https://pypi.org/project/clitic/)
+[![Build Status](https://github.com/christophevg/clitic/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/christophevg/clitic/actions/workflows/ci.yml)
+[![Coverage Status](https://coveralls.io/repos/github/christophevg/clitic/badge.svg?branch=master)](https://coveralls.io/github/christophevg/clitic)
+[![License](https://img.shields.io/pypi/l/clitic.svg)](https://github.com/christophevg/clitic/blob/master/LICENSE)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://docs.astral.sh/ruff/)
+[![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://mypy-lang.org/)
+
 A Python package for building rich, interactive CLI applications.
 
 ## Overview
