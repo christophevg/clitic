@@ -4,24 +4,6 @@
 
 ### Phase 1: Foundation (P1 - Essential)
 
-- [ ] **plugin-base-classes**
-  - Create abstract base classes for plugin system (FR-014, FR-015, FR-016)
-  - **Acceptance Criteria:**
-    - [ ] `src/clitic/plugins/base.py` exists with ContentPlugin ABC
-    - [ ] `src/clitic/completion/base.py` exists with CompletionProvider ABC
-    - [ ] Completion dataclass defined with text, display_text, cursor_offset, description, priority, metadata
-    - [ ] Highlighter protocol defined for syntax highlighting
-    - [ ] Renderable protocol defined for content type flexibility
-    - [ ] All plugin interfaces have priority property for consistent ordering
-    - [ ] ContentPlugin has on_register/on_unregister lifecycle hooks
-    - [ ] ContentPlugin has render_async method for async rendering
-    - [ ] ModeProvider has on_enter/on_exit lifecycle hooks
-    - [ ] All base classes have proper type hints and docstrings
-    - [ ] No `Any` type in public signatures (use Union[str, Renderable] protocol)
-    - [ ] Unit tests for base class interfaces
-  - **Dependencies:** setup-py.typed
-  - **Priority:** P1
-
 - [ ] **base-app-class**
   - Create App class extending Textual App with sensible defaults
   - **Acceptance Criteria:**
@@ -543,6 +525,12 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **plugin-base-classes**
+  - Created ContentPlugin, ModeProvider, CompletionProvider ABCs
+  - Defined Renderable, Highlighter protocols
+  - Created Completion dataclass
+  - 62 tests with full coverage
 
 - [x] **exception-hierarchy**
   - Created CliticError, PluginError, ConfigurationError, RenderError
