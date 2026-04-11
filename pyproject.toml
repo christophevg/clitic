@@ -45,6 +45,7 @@ dev = [
   "sphinx>=7.0.0",
   "sphinx-rtd-theme>=2.0.0",
   "myst-parser>=2.0.0",
+  "tox>=4.0.0",
 ]
 
 [project.urls]
@@ -114,3 +115,22 @@ exclude_lines = [
   "raise NotImplementedError",
   "if TYPE_CHECKING:",
 ]
+
+[tool.tox]
+env_list = ["py310", "py311", "py312"]
+
+[tool.tox.env_run_base]
+skip_install = true
+deps = [".[dev]"]
+commands = [
+  ["pytest", "-v", "--cov=clitic", "--cov-report=term-missing"],
+]
+
+[tool.tox.env.py310]
+base_python = ["python3.10"]
+
+[tool.tox.env.py311]
+base_python = ["python3.11"]
+
+[tool.tox.env.py312]
+base_python = ["python3.12"]

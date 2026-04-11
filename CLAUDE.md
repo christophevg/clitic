@@ -33,7 +33,11 @@ echo 'clitic' > .python-version
 | `make setup` | Create pyenv virtualenv |
 | `make activate` | Show activation instructions |
 | `make install` | Install dev dependencies (venv required) |
-| `make test` | Run tests with coverage |
+| `make test` | Run tests with coverage (current Python) |
+| `make test-all` | Run tests against all supported Python versions |
+| `make test-3.10` | Run tests against Python 3.10 |
+| `make test-3.11` | Run tests against Python 3.11 |
+| `make test-3.12` | Run tests against Python 3.12 |
 | `make test-file FILE=<path>` | Run specific test file |
 | `make test-one TEST=<path>` | Run specific test function |
 | `make showcase` | Run feature showcase application |
@@ -56,7 +60,7 @@ All development targets require an active virtual environment and will fail with
 
 Before any commit, the following must be verified:
 
-1. **All tests pass:** `make test`
+1. **All tests pass on all versions:** `make test-all`
 2. **Showcase runs correctly:** `make showcase` (user must confirm visually)
 3. **Type checking passes:** `make typecheck`
 4. **Linting passes:** `make lint`
@@ -149,6 +153,7 @@ Uses Textual's CSS-like styling (TCSS files). Themes are stored in `themes/`, ba
 - Tests located in `tests/` directory
 - pytest with asyncio mode enabled
 - Coverage reporting via pytest-cov
+- **Multi-version testing:** Run `make test-all` before committing to ensure compatibility with Python 3.10, 3.11, and 3.12
 
 ## Dependencies
 

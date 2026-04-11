@@ -4,7 +4,7 @@
 VENV_NAME := clitic
 PYTHON_VERSION := 3.11
 
-.PHONY: setup activate install test test-file typecheck lint format build publish clean clean-all help showcase docs docs-view
+.PHONY: setup activate install test test-all test-3.10 test-3.11 test-3.12 test-file typecheck lint format build publish clean clean-all help showcase docs docs-view
 
 # Guard to ensure virtual environment is active
 define check_venv
@@ -58,6 +58,18 @@ test-file: ## Run specific test file (usage: make test-file FILE=tests/test_pack
 test-one: ## Run specific test function (usage: make test-one TEST=tests/test_package.py::test_import)
 	$(check_venv)
 	pytest $(TEST)
+
+test-all: ## Run tests against all supported Python versions (3.10, 3.11, 3.12)
+	tox
+
+test-3.10: ## Run tests against Python 3.10 only
+	tox -e py310
+
+test-3.11: ## Run tests against Python 3.11 only
+	tox -e py311
+
+test-3.12: ## Run tests against Python 3.12 only
+	tox -e py312
 
 ## Showcase
 
