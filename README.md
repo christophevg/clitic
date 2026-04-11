@@ -22,17 +22,15 @@ pip install clitic
 ## Quick Start
 
 ```python
-from clitic import App, InputBar, Conversation
+from clitic import App, Conversation
 
+conversation = Conversation()
 app = App(title="My CLI Tool")
 
 @app.on_submit
 def handle_input(text: str):
     conversation.append("user", text)
     # Process input...
-
-conversation = Conversation()
-input_bar = InputBar(history_file="~/.my_cli_history.jsonl")
 
 app.run()
 ```

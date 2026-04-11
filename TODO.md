@@ -4,15 +4,6 @@
 
 ### Phase 0: Project Setup (P1 - Essential)
 
-- [ ] **fix-quickstart-example**
-  - Fix bug in README.md Quick Start (conversation used before defined)
-  - **Acceptance Criteria:**
-    - [ ] Conversation is defined before use in handle_input
-    - [ ] Widget composition pattern is clear (how widgets connect to App)
-    - [ ] Example runs without NameError
-  - **Dependencies:** None
-  - **Priority:** P1
-
 - [ ] **setup-py.typed**
   - Create `src/clitic/py.typed` marker file for PEP 561 compatibility
   - **Acceptance Criteria:**
@@ -597,6 +588,10 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **fix-quickstart-example**
+  - Fixed bug in README.md Quick Start (conversation defined before use)
+  - Removed unused input_bar variable for cleaner example
 
 - [x] **package-structure**
   - Created src/clitic package structure

@@ -5,8 +5,8 @@ analysts:
   - api-architect
   - ui-ux-designer
 checksums:
-  README.md: sha256:abc123
-  TODO.md: sha256:def456
+  README.md: sha256:2840449d34634f6f64a271a936f4346ee5c827789d2e9556e274e8cf0462750a
+  TODO.md: sha256:529b33b5440456f7c3d59d03917435efabdbf72bb999a70cc8b79994f335cc7b
 consensus: reporting/clitic-initial-analysis/consensus.md
 tasks:
   - fix-quickstart-example
