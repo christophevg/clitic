@@ -2,6 +2,15 @@
 
 A Python package for building rich, interactive CLI applications.
 
+## Why "clitic"?
+
+The name is a playful linguistic reference. A **clitic** (/ˈklɪtɪk/) is an unstressed word that normally occurs only in combination with another word — like the 'm in "I'm".
+
+The name fits perfectly because:
+
+- It starts with **"CLI"** — Command Line Interface
+- Like its linguistic namesake, **clitic** is designed to exist in combination with another project — yours! It's a framework meant to be the foundation for your rich interactive CLI applications.
+
 ```{toctree}
 :maxdepth: 2
 :caption: Getting Started
