@@ -4,16 +4,6 @@
 
 ### Phase 1: Foundation (P1 - Essential)
 
-- [ ] **exception-hierarchy**
-  - Define custom exception hierarchy for error handling
-  - **Acceptance Criteria:**
-    - [ ] `src/clitic/exceptions.py` exists with CliticError base class
-    - [ ] PluginError, ConfigurationError, RenderError defined
-    - [ ] All exceptions have clear, actionable error messages
-    - [ ] Unit tests for exception hierarchy
-  - **Dependencies:** None
-  - **Priority:** P1
-
 - [ ] **plugin-base-classes**
   - Create abstract base classes for plugin system (FR-014, FR-015, FR-016)
   - **Acceptance Criteria:**
@@ -553,6 +543,11 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **exception-hierarchy**
+  - Created CliticError, PluginError, ConfigurationError, RenderError
+  - Full test coverage (39 tests)
+  - Updated project to Python 3.10+ for modern syntax
 
 - [x] **showcase-application**
   - Executable module showcasing implemented features
