@@ -4,6 +4,8 @@ This module provides the main App class that extends Textual's App,
 adding plugin management and input handling capabilities.
 """
 
+from __future__ import annotations
+
 from importlib.resources import files
 from typing import TYPE_CHECKING, Any, Callable
 
