@@ -8,35 +8,45 @@ clitic is a Python package for building rich, interactive CLI applications (TUIs
 
 ## Development Setup
 
-```bash
-# Install in development mode with all dev dependencies
-pip install -e ".[dev]"
-```
-
-## Commands
+Uses pyenv for virtual environment management. A virtual environment is required for all development operations.
 
 ```bash
-# Run tests (coverage enabled by default)
-pytest
+# Create pyenv virtualenv
+make setup
 
-# Run specific test file
-pytest tests/test_package.py
+# Activate the virtual environment
+pyenv activate clitic
 
-# Run specific test function
-pytest tests/test_package.py::test_import
-
-# Type check
-mypy src
-
-# Lint
-ruff check src tests
-
-# Format code
-ruff format src tests
-
-# Build package
-python -m build
+# Install dependencies
+make install
 ```
+
+For automatic activation, create `.python-version`:
+```bash
+echo 'clitic' > .python-version
+```
+
+## Makefile Targets
+
+| Target | Description |
+|--------|-------------|
+| `make setup` | Create pyenv virtualenv |
+| `make activate` | Show activation instructions |
+| `make install` | Install dev dependencies (venv required) |
+| `make test` | Run tests with coverage |
+| `make test-file FILE=<path>` | Run specific test file |
+| `make test-one TEST=<path>` | Run specific test function |
+| `make typecheck` | Run mypy type checking |
+| `make lint` | Run ruff linting |
+| `make format` | Format code with ruff |
+| `make check` | Run all checks (typecheck + lint) |
+| `make build` | Build package distributions |
+| `make publish` | Build and publish to PyPI |
+| `make publish-test` | Build and publish to TestPyPI |
+| `make clean` | Remove build artifacts |
+| `make clean-all` | Remove build artifacts and virtualenv |
+
+All development targets require an active virtual environment and will fail with instructions if not detected.
 
 ## Architecture
 
@@ -85,4 +95,4 @@ Uses Textual's CSS-like styling (TCSS files). Themes are stored in `themes/`, ba
 
 - `textual>=0.50.0` - TUI framework
 - `rich>=13.0.0` - Terminal rendering
-- Dev: pytest, pytest-cov, pytest-asyncio, mypy, ruff
+- Dev: pytest, pytest-cov, pytest-asyncio, mypy, ruff, build, twine

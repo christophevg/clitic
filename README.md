@@ -46,6 +46,54 @@ app.run()
 - **Theming**: Dark and light themes with customization
 - **Responsive**: Layouts adapt to terminal width
 
+## Development
+
+### Requirements
+
+- [pyenv](https://github.com/pyenv/pyenv) with pyenv-virtualenv plugin
+- Python 3.11+
+
+### Setup
+
+```bash
+# Create and activate virtual environment
+make setup
+pyenv activate clitic
+
+# Or for automatic activation:
+echo 'clitic' > .python-version
+
+# Install dependencies
+make install
+```
+
+### Development Commands
+
+| Command | Description |
+|---------|-------------|
+| `make test` | Run tests with coverage |
+| `make typecheck` | Run mypy type checking |
+| `make lint` | Run ruff linting |
+| `make format` | Format code with ruff |
+| `make check` | Run all checks |
+
+### Building & Publishing
+
+```bash
+make build        # Build package
+make publish      # Publish to PyPI
+make publish-test # Publish to TestPyPI
+```
+
+### Cleanup
+
+```bash
+make clean      # Remove build artifacts
+make clean-all  # Remove build artifacts and virtualenv
+```
+
+Run `make help` for all available targets.
+
 ## License
 
 MIT License
