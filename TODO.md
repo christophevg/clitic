@@ -4,18 +4,6 @@
 
 ### Phase 0: Project Setup (P1 - Essential)
 
-- [ ] **setup-ci**
-  - Set up GitHub Actions CI workflow
-  - **Acceptance Criteria:**
-    - [ ] `.github/workflows/ci.yml` exists
-    - [ ] CI runs tests on Python 3.9, 3.10, 3.11, 3.12
-    - [ ] CI runs on macOS, Linux, Windows
-    - [ ] CI runs typecheck and lint checks
-    - [ ] mypy runs with --strict flag for type completeness
-    - [ ] All checks pass on main branch
-  - **Dependencies:** None
-  - **Priority:** P1
-
 - [ ] **showcase-application**
   - Create executable module showcasing all implemented features
   - **Acceptance Criteria:**
@@ -580,6 +568,12 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **setup-ci**
+  - Created `.github/workflows/ci.yml` with test matrix
+  - Tests run on Python 3.9, 3.10, 3.11, 3.12
+  - Tests run on macOS, Linux, Windows
+  - Typecheck and lint jobs with mypy --strict
 
 - [x] **setup-py.typed**
   - Created `src/clitic/py.typed` marker file for PEP 561 compatibility
