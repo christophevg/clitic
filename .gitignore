@@ -59,4 +59,4 @@ Thumbs.db
 
 # Project specific
 *.log
-*.jsonl
+*.jsonldocs/_build/
