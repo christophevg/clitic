@@ -72,10 +72,23 @@ make install
 | Command | Description |
 |---------|-------------|
 | `make test` | Run tests with coverage |
+| `make showcase` | Run feature showcase application |
 | `make typecheck` | Run mypy type checking |
 | `make lint` | Run ruff linting |
 | `make format` | Format code with ruff |
 | `make check` | Run all checks |
+
+## Showcase
+
+The package includes an executable showcase that demonstrates all implemented features:
+
+```bash
+python -m clitic
+# or
+make showcase
+```
+
+The showcase is updated as features are implemented, providing a live demonstration of the framework's capabilities.
 
 ### Building & Publishing
 

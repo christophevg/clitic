@@ -33,6 +33,19 @@
   - **Dependencies:** None
   - **Priority:** P1
 
+- [ ] **showcase-application**
+  - Create executable module showcasing all implemented features
+  - **Acceptance Criteria:**
+    - [ ] `src/clitic/__main__.py` exists with main() entry point
+    - [ ] Showcase displays version and lists implemented features
+    - [ ] Showcase demonstrates each implemented widget/feature
+    - [ ] `make showcase` target runs the application
+    - [ ] Tests verify showcase runs without error
+    - [ ] Showcase updated as features are implemented
+  - **Dependencies:** None
+  - **Priority:** P1
+  - **Note:** This is a living task - showcase evolves as features are added
+
 ### Phase 1: Foundation (P1 - Essential)
 
 - [ ] **exception-hierarchy**

@@ -36,6 +36,7 @@ echo 'clitic' > .python-version
 | `make test` | Run tests with coverage |
 | `make test-file FILE=<path>` | Run specific test file |
 | `make test-one TEST=<path>` | Run specific test function |
+| `make showcase` | Run feature showcase application |
 | `make typecheck` | Run mypy type checking |
 | `make lint` | Run ruff linting |
 | `make format` | Format code with ruff |
@@ -47,6 +48,29 @@ echo 'clitic' > .python-version
 | `make clean-all` | Remove build artifacts and virtualenv |
 
 All development targets require an active virtual environment and will fail with instructions if not detected.
+
+## Pre-Commit Requirements
+
+Before any commit, the following must be verified:
+
+1. **All tests pass:** `make test`
+2. **Showcase runs correctly:** `make showcase` (user must confirm visually)
+3. **Type checking passes:** `make typecheck`
+4. **Linting passes:** `make lint`
+
+The showcase application (`python -m clitic`) must demonstrate all currently implemented features and run without errors.
+
+## Showcase Application
+
+The package is executable and provides a living showcase of implemented features:
+
+```bash
+python -m clitic
+# or
+make showcase
+```
+
+The showcase (`src/clitic/__main__.py`) should be updated as features are implemented to demonstrate them.
 
 ## Architecture
 

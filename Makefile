@@ -4,7 +4,7 @@
 VENV_NAME := clitic
 PYTHON_VERSION := 3.11
 
-.PHONY: setup activate install test test-file typecheck lint format build publish clean clean-all help
+.PHONY: setup activate install test test-file typecheck lint format build publish clean clean-all help showcase
 
 # Guard to ensure virtual environment is active
 define check_venv
@@ -58,6 +58,12 @@ test-file: ## Run specific test file (usage: make test-file FILE=tests/test_pack
 test-one: ## Run specific test function (usage: make test-one TEST=tests/test_package.py::test_import)
 	$(check_venv)
 	pytest $(TEST)
+
+## Showcase
+
+showcase: ## Run the clitic showcase application
+	$(check_venv)
+	python -m clitic
 
 ## Code Quality
 
@@ -116,5 +122,8 @@ help: ## Show this help message
 	@echo "  make activate     - Show activation instructions"
 	@echo "  make install      - Install dependencies (requires venv)"
 	@echo ""
+	@echo "Showcase:"
+	@echo "  make showcase     - Run the feature showcase application"
+	@echo ""
 	@echo "Targets:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | grep -v "setup\|activate\|install" | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | grep -v "setup\|activate\|install\|showcase" | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
