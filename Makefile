@@ -4,7 +4,7 @@
 VENV_NAME := clitic
 PYTHON_VERSION := 3.11
 
-.PHONY: setup activate install test test-file typecheck lint format build publish clean clean-all help showcase
+.PHONY: setup activate install test test-file typecheck lint format build publish clean clean-all help showcase docs docs-view
 
 # Guard to ensure virtual environment is active
 define check_venv
@@ -68,6 +68,20 @@ showcase: ## Run the clitic showcase application
 screenshot:
 	screencapture -iW media/current-showcase.png
 
+## Documentation
+
+docs: ## Build HTML documentation
+	$(check_venv)
+	cd docs && make html
+
+docs-view: docs ## Build and open documentation in browser
+	@echo "Opening documentation..."
+	@if command -v open >/dev/null; then \
+		open docs/_build/html/index.html; \
+	elif command -v xdg-open >/dev/null; then \
+		xdg-open docs/_build/html/index.html; \
+	fi
+
 ## Code Quality
 
 typecheck: ## Run mypy type checking
@@ -127,6 +141,11 @@ help: ## Show this help message
 	@echo ""
 	@echo "Showcase:"
 	@echo "  make showcase     - Run the feature showcase application"
+	@echo "  make screenshot   - Capture screenshot of showcase"
+	@echo ""
+	@echo "Documentation:"
+	@echo "  make docs         - Build HTML documentation"
+	@echo "  make docs-view    - Build and open documentation in browser"
 	@echo ""
 	@echo "Targets:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | grep -v "setup\|activate\|install\|showcase" | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | grep -v "setup\|activate\|install\|showcase\|docs" | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
