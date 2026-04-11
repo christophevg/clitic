@@ -1,0 +1,84 @@
+/* Base clitic styles */
+
+/* Color palette */
+$accent: #3B82F6;
+$accent-dark: #2563EB;
+$background: #1E1E1E;
+$background-light: #2D2D2D;
+$foreground: #E5E5E5;
+$foreground-muted: #9CA3AF;
+$error: #EF4444;
+$success: #22C55E;
+$warning: #F59E0B;
+$info: #06B6D4;
+
+/* Base App styling */
+App {
+  background: $background;
+  color: $foreground;
+}
+
+/* Content block base */
+.content-block {
+  padding: 1 2;
+  margin: 0 0 1 0;
+}
+
+.content-block.user {
+  background: $accent 20%;
+  border-left: thick $accent;
+}
+
+.content-block.assistant {
+  background: $background-light;
+  border-left: thick $foreground-muted;
+}
+
+.content-block.system {
+  background: $warning 10%;
+  border-left: thick $warning;
+}
+
+.content-block.tool {
+  background: $info 10%;
+  border-left: thick $info;
+}
+
+/* Input styling */
+.input-bar {
+  background: $background-light;
+  padding: 1;
+}
+
+.input-bar:focus {
+  border: thick $accent;
+}
+
+/* Scrollbar */
+Scrollbar {
+  background: $background-light;
+  color: $foreground-muted;
+}
+
+Scrollbar:hover {
+  color: $accent;
+}
+
+/* Focus indicator */
+:focus {
+  border: thick $accent;
+}
+
+/* Button styling */
+Button {
+  background: $accent;
+  color: $background;
+}
+
+Button:hover {
+  background: $accent-dark;
+}
+
+Button:focus {
+  border: thick $foreground;
+}

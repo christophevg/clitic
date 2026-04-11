@@ -2,18 +2,6 @@
 
 ## Backlog
 
-### Phase 1: Foundation (P1 - Essential)
-
-- [ ] **base-styles**
-  - Create base .tcss stylesheet for widgets
-  - **Acceptance Criteria:**
-    - [ ] `src/clitic/styles/base.tcss` exists
-    - [ ] Defines base widget styles (colors, padding, margins)
-    - [ ] Included in package data via pyproject.toml
-    - [ ] App loads base styles automatically
-  - **Dependencies:** base-app-class
-  - **Priority:** P1
-
 ### Phase 2: InputBar Widget (P1 - Essential)
 
 - [ ] **inputbar-basic**
@@ -512,6 +500,10 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **base-styles**
+  - Created base.tcss with color palette and widget styles
+  - App loads styles automatically via CSS_PATH
 
 - [x] **base-app-class**
   - Created App class extending Textual's App

@@ -65,6 +65,9 @@ showcase: ## Run the clitic showcase application
 	$(check_venv)
 	python -m clitic
 
+screenshot:
+	screencapture -iW media/current-showcase.png
+
 ## Code Quality
 
 typecheck: ## Run mypy type checking
