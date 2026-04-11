@@ -4,14 +4,6 @@
 
 ### Phase 0: Project Setup (P1 - Essential)
 
-- [ ] **setup-py.typed**
-  - Create `src/clitic/py.typed` marker file for PEP 561 compatibility
-  - **Acceptance Criteria:**
-    - [ ] File exists at `src/clitic/py.typed`
-    - [ ] Package is recognized as typed by mypy when installed
-  - **Dependencies:** None
-  - **Priority:** P1
-
 - [ ] **setup-ci**
   - Set up GitHub Actions CI workflow
   - **Acceptance Criteria:**
@@ -588,6 +580,10 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **setup-py.typed**
+  - Created `src/clitic/py.typed` marker file for PEP 561 compatibility
+  - Package configured with `Typing :: Typed` classifier
 
 - [x] **fix-quickstart-example**
   - Fixed bug in README.md Quick Start (conversation defined before use)
