@@ -37,6 +37,9 @@ echo 'clitic' > .python-version
 | `make test-file FILE=<path>` | Run specific test file |
 | `make test-one TEST=<path>` | Run specific test function |
 | `make showcase` | Run feature showcase application |
+| `make screenshot` | Capture screenshot of showcase |
+| `make docs` | Build HTML documentation |
+| `make docs-view` | Build and open documentation in browser |
 | `make typecheck` | Run mypy type checking |
 | `make lint` | Run ruff linting |
 | `make format` | Format code with ruff |
@@ -59,6 +62,38 @@ Before any commit, the following must be verified:
 4. **Linting passes:** `make lint`
 
 The showcase application (`python -m clitic`) must demonstrate all currently implemented features and run without errors.
+
+## Documentation Requirements
+
+The project uses Sphinx for documentation, published to readthedocs.org.
+
+### When Adding New Features
+
+1. Update the showcase application (`src/clitic/__main__.py`)
+2. Update API reference (`docs/api/`)
+3. Update README.md if the feature affects user-facing API
+4. Update screenshot if showcase changed:
+   - Run `make screenshot` to capture the current showcase
+   - Ask user to verify the screenshot is correct before committing
+5. Update changelog (`docs/development/changelog.md`)
+
+### Documentation Files
+
+- `docs/index.md` - Documentation home
+- `docs/installation.md` - Installation guide
+- `docs/quickstart.md` - Quick start guide
+- `docs/api/` - API reference (one file per module)
+- `docs/development/` - Development guides
+
+### Building Documentation
+
+```bash
+# Build HTML documentation
+cd docs && make html
+
+# View locally
+open docs/_build/html/index.html
+```
 
 ## Showcase Application
 

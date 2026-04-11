@@ -78,6 +78,8 @@ make install
 
 ## Showcase
 
+![Current Showcase](media/current-showcase.png)
+
 The package includes an executable showcase that demonstrates all implemented features:
 
 ```bash
