@@ -10,7 +10,7 @@ Run with:
     make showcase
 """
 
-from clitic import __version__
+from clitic import App, __version__
 
 
 def main() -> None:
@@ -27,6 +27,28 @@ def main() -> None:
   print("  [✓] Package structure")
   print("  [✓] Version information")
   print("  [✓] Executable module")
+  print("  [✓] Core App class with plugin management")
+  print("  [✓] on_submit decorator for input handling")
+  print()
+  print("Demonstrating App class:")
+  print("-" * 40)
+
+  # Create a simple app instance
+  app = App(title="clitic Showcase", theme_name="dark")
+  print(f"  Created App with title: {app.title}")
+  print(f"  Theme: {app.theme_name}")
+
+  # Demonstrate on_submit decorator
+  messages_received: list[str] = []
+
+  @app.on_submit
+  def handle_input(text: str) -> None:
+    messages_received.append(text)
+
+  # Trigger submit to demonstrate the handler
+  app._trigger_submit("Hello from clitic!")
+  print(f"  Submit handler received: {messages_received}")
+
   print()
   print("Coming soon:")
   print("  [ ] InputBar widget")

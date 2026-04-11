@@ -3,6 +3,7 @@ clitic - A Python package for building rich, interactive CLI applications.
 """
 
 from clitic.completion import Completion, CompletionProvider
+from clitic.core import App
 from clitic.exceptions import (
   CliticError,
   ConfigurationError,
@@ -20,6 +21,8 @@ __version__ = "0.1.0"
 
 __all__ = [
   "__version__",
+  # Core
+  "App",
   # Exceptions
   "CliticError",
   "ConfigurationError",

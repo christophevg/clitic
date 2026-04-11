@@ -4,19 +4,6 @@
 
 ### Phase 1: Foundation (P1 - Essential)
 
-- [ ] **base-app-class**
-  - Create App class extending Textual App with sensible defaults
-  - **Acceptance Criteria:**
-    - [ ] `src/clitic/core/app.py` exists with App class
-    - [ ] App accepts title and theme parameters
-    - [ ] App provides on_submit event decorator
-    - [ ] App has register_plugin() method for explicit plugin registration
-    - [ ] App exported from `src/clitic/__init__.py`
-    - [ ] Unit tests for App initialization
-    - [ ] Working example: can create and run minimal app
-  - **Dependencies:** plugin-base-classes
-  - **Priority:** P1
-
 - [ ] **base-styles**
   - Create base .tcss stylesheet for widgets
   - **Acceptance Criteria:**
@@ -525,6 +512,12 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **base-app-class**
+  - Created App class extending Textual's App
+  - Plugin management with register/unregister
+  - on_submit decorator for input handling
+  - 19 tests with full coverage
 
 - [x] **plugin-base-classes**
   - Created ContentPlugin, ModeProvider, CompletionProvider ABCs
