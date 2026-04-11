@@ -8,7 +8,7 @@ PYTHON_VERSION := 3.11
 
 # Guard to ensure virtual environment is active
 define check_venv
-	@if [ -z "$(VIRTUAL_ENV)" ]; then \
+	@if [ -z "$(VIRTUAL_ENV)" ] && [ "$(shell pyenv version-name 2>/dev/null)" != "$(VENV_NAME)" ]; then \
 		echo "Error: No virtual environment detected. Run 'pyenv activate $(VENV_NAME)' or 'source .venv/bin/activate' first."; \
 		exit 1; \
 	fi
