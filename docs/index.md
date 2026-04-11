@@ -24,6 +24,7 @@ quickstart
 :caption: API Reference
 
 api/app
+api/widgets
 api/exceptions
 api/plugins
 api/completion

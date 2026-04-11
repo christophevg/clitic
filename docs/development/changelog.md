@@ -37,11 +37,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Theme support
 - Base TCSS stylesheet with color palette
 
+### Widgets
+
+- `InputBar` widget for multiline text input
+  - Extends Textual's TextArea
+  - Enter to submit, Shift+Enter for newline
+  - Placeholder text support
+  - Multiple themes (monokai, github_light, etc.)
+  - Disabled state handling
+  - BINDINGS for proper key handling
+
+### Showcase
+
+- Interactive TUI showcase application
+- Light theme with blue accents
+- Message display with proper contrast
+- Auto-focus on input bar
+
 ### Documentation
 
 - CLAUDE.md for Claude Code guidance
 - Showcase application demonstrating implemented features
 - Sphinx documentation setup for readthedocs.org
+- API reference for widgets (InputBar)
 
 ### Changed
 

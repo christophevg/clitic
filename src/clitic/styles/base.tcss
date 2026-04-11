@@ -64,11 +64,6 @@ Scrollbar:hover {
   color: $accent;
 }
 
-/* Focus indicator */
-:focus {
-  border: thick $accent;
-}
-
 /* Button styling */
 Button {
   background: $accent;

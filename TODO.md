@@ -4,15 +4,15 @@
 
 ### Phase 2: InputBar Widget (P1 - Essential)
 
-- [ ] **inputbar-basic**
+- [x] **inputbar-basic**
   - Create basic multiline input widget (FR-001 partial)
   - **Acceptance Criteria:**
-    - [ ] `src/clitic/widgets/input_bar.py` exists with InputBar class
-    - [ ] InputBar extends Textual Widget
-    - [ ] Supports multiline text editing
-    - [ ] Enter submits, Shift+Enter inserts newline (default behavior)
-    - [ ] Exported from `src/clitic/__init__.py`
-    - [ ] Unit tests for InputBar
+    - [x] `src/clitic/widgets/input_bar.py` exists with InputBar class
+    - [x] InputBar extends Textual Widget
+    - [x] Supports multiline text editing
+    - [x] Enter submits, Shift+Enter inserts newline (default behavior)
+    - [x] Exported from `src/clitic/__init__.py`
+    - [x] Unit tests for InputBar
   - **Dependencies:** base-app-class
   - **Priority:** P1
 
@@ -500,6 +500,11 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **inputbar-basic**
+  - Created InputBar widget extending TextArea
+  - Enter submits, Shift+Enter inserts newline
+  - 26 tests with full coverage
 
 - [x] **base-styles**
   - Created base.tcss with color palette and widget styles

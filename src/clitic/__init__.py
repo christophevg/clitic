@@ -16,6 +16,7 @@ from clitic.plugins import (
   ModeProvider,
   Renderable,
 )
+from clitic.widgets import InputBar
 
 __version__ = "0.1.0"
 
@@ -36,4 +37,6 @@ __all__ = [
   # Completion base classes
   "Completion",
   "CompletionProvider",
+  # Widgets
+  "InputBar",
 ]

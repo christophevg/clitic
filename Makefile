@@ -77,8 +77,11 @@ showcase: ## Run the clitic showcase application
 	$(check_venv)
 	python -m clitic
 
+NOW := $(shell date +"%Y%m%d-%H%M%S")
+
 screenshot:
-	screencapture -iW media/current-showcase.png
+	screencapture -iW media/current-showcase-${NOW}.png
+	cp media/current-showcase-${NOW}.png media/current-showcase.png
 
 ## Documentation
 
