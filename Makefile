@@ -86,7 +86,7 @@ docs-view: docs ## Build and open documentation in browser
 
 typecheck: ## Run mypy type checking
 	$(check_venv)
-	mypy src
+	mypy --strict src
 
 lint: ## Run ruff linting
 	$(check_venv)

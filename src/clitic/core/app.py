@@ -5,7 +5,7 @@ adding plugin management and input handling capabilities.
 """
 
 from importlib.resources import files
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from textual.app import App as TextualApp
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 SubmitHandler = Callable[[str], None]
 
 
-class App(TextualApp):
+class App(TextualApp[Any]):
   """Main application class for clitic.
 
   Extends Textual's App with plugin management and input submission handling.

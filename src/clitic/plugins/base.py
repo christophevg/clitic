@@ -11,6 +11,9 @@ if TYPE_CHECKING:
   from textual.app import App
   from textual.widget import Widget
 
+  # Type alias for App with default ActionResult type
+  TextualApp = App[object]
+
 
 class Renderable(Protocol):
   """Protocol for renderable content types.
@@ -118,7 +121,7 @@ class ContentPlugin(ABC):
     """
     return self.render(content)
 
-  def on_register(self, app: "App") -> None:  # noqa: B027
+  def on_register(self, app: "TextualApp") -> None:  # noqa: B027
     """Lifecycle hook called when plugin is registered with an app.
 
     Override this method to perform initialization that requires access
@@ -129,7 +132,7 @@ class ContentPlugin(ABC):
     """
     pass
 
-  def on_unregister(self, app: "App") -> None:  # noqa: B027
+  def on_unregister(self, app: "TextualApp") -> None:  # noqa: B027
     """Lifecycle hook called when plugin is unregistered from an app.
 
     Override this method to perform cleanup (e.g., unsubscribing from
