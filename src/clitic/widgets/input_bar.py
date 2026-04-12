@@ -66,6 +66,7 @@ class InputBar(TextArea):
     classes: str | None = None,
     disabled: bool = False,
     placeholder: str = "",
+    read_only: bool = False,
   ) -> None:
     """Initialize the InputBar.
 
@@ -78,6 +79,7 @@ class InputBar(TextArea):
         classes: Space-separated CSS classes.
         disabled: Whether the widget is disabled.
         placeholder: Placeholder text when empty.
+        read_only: Whether the widget is read-only (default: False).
     """
     super().__init__(
       text,
@@ -88,6 +90,7 @@ class InputBar(TextArea):
       classes=classes,
       disabled=disabled,
       placeholder=placeholder,
+      read_only=read_only,
     )
 
   def clear_text(self) -> None:

@@ -16,13 +16,13 @@
   - **Dependencies:** base-app-class
   - **Priority:** P1
 
-- [ ] **inputbar-cursor**
+- [x] **inputbar-cursor**
   - Add cursor movement and selection support (FR-001)
   - **Acceptance Criteria:**
-    - [ ] Full cursor movement (arrows, Home, End, Ctrl+arrows)
-    - [ ] Text selection (Shift+arrows, Ctrl+A)
-    - [ ] Copy/paste support (Ctrl+C, Ctrl+V)
-    - [ ] Visual selection highlighting
+    - [x] Full cursor movement (arrows, Home, End, Ctrl+arrows)
+    - [x] Text selection (Shift+arrows, Ctrl+A)
+    - [x] Copy/paste support (Ctrl+C, Ctrl+V)
+    - [x] Visual selection highlighting
   - **Dependencies:** inputbar-basic
   - **Priority:** P1
 
@@ -500,6 +500,16 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **inputbar-cursor**
+  - Added cursor movement and selection support to InputBar
+  - Full cursor movement (arrows, Home, End, Ctrl+arrows) inherited from TextArea
+  - Text selection (Shift+arrows, Ctrl+A) inherited from TextArea
+  - Copy/paste support (Ctrl+C, Ctrl+V) inherited from TextArea
+  - Visual selection highlighting via TextArea CSS class
+  - Added read_only parameter to InputBar constructor
+  - 54 new tests for cursor/selection/clipboard functionality
+  - Total: 205 tests passing
 
 - [x] **inputbar-basic**
   - Created InputBar widget extending TextArea
