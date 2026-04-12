@@ -80,14 +80,20 @@ InputBar(
 | Shift+Enter | Insert newline |
 | Arrow keys | Move cursor |
 | Ctrl+← / Ctrl+→ | Move by word |
-| Home / End | Move to line start/end |
+| Home / Ctrl+A | Move to line start |
+| End / Ctrl+E | Move to line end |
 | Shift+arrows | Extend selection |
-| Ctrl+A | Select all |
+| Shift+Home / Shift+End | Select to line start/end |
+| **F7** or **Ctrl+Shift+A** | **Select all** |
 | Ctrl+C | Copy selection |
 | Ctrl+V | Paste from clipboard |
 | Ctrl+X | Cut selection |
 | Ctrl+Z | Undo |
 | Ctrl+Y | Redo |
+
+**Note:** `Ctrl+A` moves to line start (like Home). Use **F7** or **Ctrl+Shift+A** to select all text.
+
+**macOS Note:** The Terminal app intercepts `Cmd+A` for its own "Select All". Use **F7** or **Ctrl+Shift+A** instead. You can also configure your terminal to pass `Cmd+A` through to the application in terminal preferences. |
 
 ### Submit Message
 

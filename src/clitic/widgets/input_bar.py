@@ -50,6 +50,8 @@ class InputBar(TextArea):
   BINDINGS = [
     ("enter", "submit_input", "Submit"),
     ("shift+enter", "insert_newline", "New line"),
+    ("f7", "select_all", "Select all"),
+    ("ctrl+shift+a", "select_all", "Select all"),
   ]
 
   class Submit(Message):
