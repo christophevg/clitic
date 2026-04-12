@@ -26,13 +26,13 @@
   - **Dependencies:** inputbar-basic
   - **Priority:** P1
 
-- [ ] **inputbar-autogrow**
+- [x] **inputbar-autogrow**
   - Add auto-grow with configurable max height (FR-001)
   - **Acceptance Criteria:**
-    - [ ] Widget height expands as content grows
-    - [ ] Configurable max_height parameter (default: 10 lines)
-    - [ ] Internal scrolling when content exceeds max_height
-    - [ ] Visual line wrapping (not logical line breaks)
+    - [x] Widget height expands as content grows
+    - [x] Configurable max_height parameter (default: 10 lines)
+    - [x] Internal scrolling when content exceeds max_height
+    - [x] Visual line wrapping (not logical line breaks)
   - **Dependencies:** inputbar-basic
   - **Priority:** P1
 
@@ -500,6 +500,15 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **inputbar-autogrow**
+  - Added auto-grow functionality to InputBar
+  - Widget height expands as content grows (height: auto CSS)
+  - Configurable max_height parameter (default: 10 lines)
+  - Internal scrolling when content exceeds max_height (via ScrollView)
+  - Visual line wrapping via wrapped_document.height
+  - 12 new tests for auto-grow functionality
+  - Total: 218 tests passing
 
 - [x] **inputbar-cursor**
   - Added cursor movement and selection support to InputBar

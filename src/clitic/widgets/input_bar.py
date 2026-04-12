@@ -7,6 +7,7 @@ that supports multiline text editing with Enter-to-submit behavior.
 from __future__ import annotations
 
 from textual.events import Key
+from textual.geometry import Size
 from textual.message import Message
 from textual.widgets import TextArea
 
@@ -17,8 +18,13 @@ class InputBar(TextArea):
   InputBar extends TextArea to provide a chat-style input experience where
   pressing Enter submits the text and Shift+Enter inserts a newline.
 
+  The widget supports auto-grow functionality, expanding its height as content
+  grows up to a configurable maximum height, with internal scrolling for longer
+  content.
+
   Attributes:
       Submit: Message class emitted when input is submitted.
+      max_height: Maximum height in lines for auto-grow (default: 10).
 
   Example:
       ```python
@@ -32,6 +38,13 @@ class InputBar(TextArea):
           def on_input_bar_submit(self, message: InputBar.Submit) -> None:
               print(f"Submitted: {message.text}")
       ```
+  """
+
+  DEFAULT_CSS = """
+  InputBar {
+    height: auto;
+    min-height: 1;
+  }
   """
 
   BINDINGS = [
@@ -59,6 +72,7 @@ class InputBar(TextArea):
     self,
     text: str = "",
     *,
+    max_height: int = 10,
     language: str | None = None,
     theme: str = "monokai",
     name: str | None = None,
@@ -72,6 +86,7 @@ class InputBar(TextArea):
 
     Args:
         text: Initial text content (default: empty).
+        max_height: Maximum height in lines for auto-grow (default: 10).
         language: Language for syntax highlighting (default: None).
         theme: Theme for syntax highlighting (default: "monokai").
         name: Name of the widget.
@@ -81,6 +96,7 @@ class InputBar(TextArea):
         placeholder: Placeholder text when empty.
         read_only: Whether the widget is read-only (default: False).
     """
+    self._max_height = max_height
     super().__init__(
       text,
       language=language,
@@ -92,6 +108,49 @@ class InputBar(TextArea):
       placeholder=placeholder,
       read_only=read_only,
     )
+
+  @property
+  def max_height(self) -> int:
+    """Maximum height in lines for auto-grow.
+
+    Returns:
+        The maximum height in lines.
+    """
+    return self._max_height
+
+  @max_height.setter
+  def max_height(self, value: int) -> None:
+    """Set the maximum height in lines for auto-grow.
+
+    Args:
+        value: The new maximum height in lines.
+
+    Note:
+        Triggers a layout refresh to update widget height.
+    """
+    self._max_height = value
+    self.refresh()
+
+  def get_content_height(
+    self, container: Size, viewport: Size, width: int
+  ) -> int:
+    """Calculate content height based on wrapped lines, clamped to max_height.
+
+    This method is called by Textual's layout system when height is set to
+    'auto' in CSS. It returns the actual height needed by the content, up to
+    the configured maximum height.
+
+    Args:
+        container: Size of the container.
+        viewport: Size of the viewport.
+        width: Available width for content.
+
+    Returns:
+        The content height in lines, clamped to [1, max_height].
+    """
+    # wrapped_document.height returns visual lines (after soft wrapping)
+    content_lines = self.wrapped_document.height
+    return max(1, min(content_lines, self._max_height))
 
   def clear_text(self) -> None:
     """Clear all text from the input bar.

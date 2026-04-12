@@ -55,12 +55,12 @@ app.run()
 
 ## Features
 
-- **InputBar**: Multiline input with history navigation, completion, and mode switching
-- **Conversation**: Scrollable content container with expandable blocks
-- **Tree/Table**: Collapsible tree and table widgets
-- **Plugins**: Markdown, diff, and terminal content renderers
+- **InputBar**: Multiline input with auto-grow, cursor movement, selection, and submit-on-Enter
+- **Conversation**: Scrollable content container with expandable blocks (planned)
+- **Tree/Table**: Collapsible tree and table widgets (planned)
+- **Plugins**: Markdown, diff, and terminal content renderers (planned)
 - **Theming**: Dark and light themes with customization
-- **Responsive**: Layouts adapt to terminal width
+- **Responsive**: Layouts adapt to terminal width (planned)
 
 ## Development
 
