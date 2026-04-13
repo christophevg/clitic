@@ -77,3 +77,8 @@ Button:hover {
 Button:focus {
   border: thick $foreground;
 }
+
+/* Conversation auto-scroll paused indicator */
+Conversation.paused {
+  border-top: thick $warning;
+}

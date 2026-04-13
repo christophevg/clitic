@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from rich.text import Text
 from textual.containers import VerticalScroll
+from textual.reactive import reactive
 from textual.widgets import Static
 
 
@@ -102,6 +103,10 @@ class Conversation(VerticalScroll):
     padding: 1;
     background: $surface;
   }
+
+  Conversation.paused {
+    border-top: thick $warning;
+  }
   """
 
   BINDINGS = [
@@ -113,9 +118,12 @@ class Conversation(VerticalScroll):
     ("end", "scroll_end", "To end"),
   ]
 
+  auto_scroll = reactive(True)
+
   def __init__(
     self,
     *,
+    auto_scroll: bool = True,
     name: str | None = None,
     id: str | None = None,  # noqa: A002
     classes: str | None = None,
@@ -124,6 +132,7 @@ class Conversation(VerticalScroll):
     """Initialize the Conversation.
 
     Args:
+        auto_scroll: Whether to automatically scroll to new content.
         name: Name of the widget.
         id: ID of the widget.
         classes: Space-separated CSS classes.
@@ -132,6 +141,51 @@ class Conversation(VerticalScroll):
     self._blocks: list[_ContentBlock] = []
     self._block_counter: int = 0
     super().__init__(name=name, id=id, classes=classes, disabled=disabled)
+    self.auto_scroll = auto_scroll
+
+  def watch_scroll_y(self, old: float, new: float) -> None:
+    """Watch for scroll position changes to manage auto_scroll state.
+
+    Args:
+        old: Previous scroll position.
+        new: Current scroll position.
+    """
+    self._update_auto_scroll_from_scroll_position()
+
+  def on_resize(self, event: object) -> None:
+    """Handle resize events to update auto_scroll when all content fits.
+
+    When window is resized to fit all content, auto-scroll should be enabled.
+
+    Args:
+        event: The resize event.
+    """
+    self._update_auto_scroll_from_scroll_position()
+
+  def _update_auto_scroll_from_scroll_position(self) -> None:
+    """Update auto_scroll based on current scroll position."""
+    max_y = self.max_scroll_y
+    # If all content fits, auto-scroll should be enabled
+    if max_y == 0:
+      self.auto_scroll = True
+    # At or near bottom - resume auto-scroll
+    elif self.scroll_y >= max_y - 1:
+      self.auto_scroll = True
+    # Scrolled up - pause auto-scroll
+    else:
+      self.auto_scroll = False
+
+  def watch_auto_scroll(self, old: bool, new: bool) -> None:
+    """Watch for auto_scroll changes to update visual state.
+
+    Args:
+        old: Previous auto_scroll state.
+        new: Current auto_scroll state.
+    """
+    if new:
+      self.remove_class("paused")
+    else:
+      self.add_class("paused")
 
   def append(self, role: str, content: str) -> str:
     """Add a new content block to the conversation.
@@ -149,6 +203,9 @@ class Conversation(VerticalScroll):
     block = _ContentBlock(role, content, block_id)
     self._blocks.append(block)
     self.mount(block)
+
+    if self.auto_scroll:
+      self.call_after_refresh(self.scroll_end, animate=False)
 
     return block_id
 

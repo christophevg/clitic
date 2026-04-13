@@ -59,13 +59,13 @@
   - **Dependencies:** base-app-class
   - **Priority:** P1
 
-- [ ] **conversation-auto-scroll**
+- [x] **conversation-auto-scroll**
   - Add auto-scroll with pause/resume (FR-006)
   - **Acceptance Criteria:**
-    - [ ] Auto-scroll to bottom on new content (configurable)
-    - [ ] Pause auto-scroll when user scrolls up
-    - [ ] Resume auto-scroll when user scrolls to bottom
-    - [ ] Visual indicator when auto-scroll is paused
+    - [x] Auto-scroll to bottom on new content (configurable)
+    - [x] Pause auto-scroll when user scrolls up
+    - [x] Resume auto-scroll when user scrolls to bottom
+    - [x] Visual indicator when auto-scroll is paused
   - **Dependencies:** conversation-basic
   - **Priority:** P1
 
@@ -501,7 +501,16 @@
 
 ## Done
 
-- [x] **conversation-basic**
+- [x] **conversation-auto-scroll**
+  - Added auto-scroll with pause/resume functionality to Conversation
+  - `auto_scroll` reactive property (default: True)
+  - `watch_scroll_y` detects user scroll position changes
+  - `watch_auto_scroll` toggles "paused" CSS class
+  - `append()` scrolls to bottom when auto_scroll is enabled
+  - Visual indicator (warning border) when auto-scroll is paused
+  - Updated showcase to use Conversation widget
+  - 10 new tests for auto-scroll functionality
+  - Total: 261 tests passing
   - Created Conversation widget extending VerticalScroll
   - Internal _ContentBlock widget for each message
   - append(role, content) method adds blocks

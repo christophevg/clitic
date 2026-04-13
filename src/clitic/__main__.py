@@ -14,36 +14,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rich.text import Text
 from textual.app import ComposeResult
-from textual.containers import VerticalScroll
-from textual.widgets import Footer, Header, Label, Static
+from textual.widgets import Footer, Header
 
-from clitic import App, InputBar, __version__
+from clitic import App, Conversation, InputBar, __version__
 
 if TYPE_CHECKING:
   pass
-
-
-class MessageDisplay(Static):
-  """A widget to display a single message."""
-
-  def __init__(self, role: str, content: str) -> None:
-    """Initialize the message display.
-
-    Args:
-        role: The role of the message (user, system, etc.)
-        content: The message content.
-    """
-    super().__init__()
-    self.role = role
-    self.content = content
-
-  def render(self) -> Text:
-    """Render the message."""
-    if self.role == "user":
-      return Text(f"[You] {self.content}", style="bold blue")
-    return Text(f"[{self.role}] {self.content}", style="bold grey")
 
 
 class ShowcaseApp(App):
@@ -58,7 +35,7 @@ class ShowcaseApp(App):
   $foreground: #1F2937;
   $foreground-muted: #6B7280;
 
-  VerticalScroll {
+  Conversation {
     height: 1fr;
     padding: 1;
     background: $background;
@@ -83,23 +60,6 @@ class ShowcaseApp(App):
     width: 100%;
     background: $background-light;
   }
-
-  MessageDisplay {
-    margin: 0 0 1 0;
-  }
-
-  .welcome {
-    text-align: center;
-    text-style: bold;
-    color: $accent;
-    margin: 2;
-  }
-
-  .help-text {
-    text-align: center;
-    color: $foreground-muted;
-    margin: 1;
-  }
   """
 
   def __init__(self) -> None:
@@ -110,13 +70,7 @@ class ShowcaseApp(App):
   def compose(self) -> ComposeResult:
     """Compose the app layout."""
     yield Header()
-    yield VerticalScroll(
-      Label("Welcome to clitic!", classes="welcome"),
-      Label("Type a message and press Enter to submit", classes="help-text"),
-      Label("Press Shift+Enter for newline (if your terminal supports it)", classes="help-text"),
-      Label("Press Ctrl+C or Ctrl+Q to quit", classes="help-text"),
-      id="messages",
-    )
+    yield Conversation(id="messages")
     # Note: Use submit_on_enter=False to make Shift+Enter submit and Enter insert newline
     yield InputBar(placeholder="Type your message here...", theme="github_light")
     yield Footer()
@@ -134,16 +88,11 @@ class ShowcaseApp(App):
     self._message_count += 1
 
     # Add the user's message to the conversation
-    messages_container = self.query_one("#messages", VerticalScroll)
-    message_display = MessageDisplay("user", event.text)
-    messages_container.mount(message_display)
+    conversation = self.query_one(Conversation)
+    conversation.append("user", event.text)
 
     # Add a system response
-    response = MessageDisplay("clitic", f"Received message #{self._message_count}!")
-    messages_container.mount(response)
-
-    # Scroll to the bottom
-    messages_container.scroll_end(animate=False)
+    conversation.append("clitic", f"Received message #{self._message_count}!")
 
     # Focus back on the input
     self.query_one(InputBar).focus()
