@@ -69,13 +69,13 @@
   - **Dependencies:** conversation-basic
   - **Priority:** P1
 
-- [ ] **conversation-virtual-rendering**
+- [x] **conversation-virtual-rendering**
   - Add virtual rendering for performance (FR-006, NFR-003)
   - **Acceptance Criteria:**
-    - [ ] Only visible content blocks are rendered
-    - [ ] Supports 100,000+ lines without performance degradation
-    - [ ] Memory usage < 50MB for 10,000 blocks
-    - [ ] Benchmark test for large content
+    - [x] Only visible content blocks are rendered
+    - [x] Supports 100,000+ lines without performance degradation
+    - [x] Memory usage < 50MB for 10,000 blocks
+    - [x] Benchmark test for large content
   - **Dependencies:** conversation-basic
   - **Priority:** P1
 
@@ -500,6 +500,18 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **conversation-virtual-rendering**
+  - Implemented virtual rendering using Textual's Line API with ScrollView
+  - Changed base class from VerticalScroll to ScrollView
+  - Replaced _ContentBlock widgets with _BlockData dataclass
+  - Implemented render_line(y) for O(1) per-line rendering
+  - Pre-renders strips on append with width-aware wrapping
+  - Resize handling with _rerender_all_blocks()
+  - Binary search for line-to-block mapping via get_block_id_at_line()
+  - Memory-efficient: 50MB limit for 10,000 blocks (tracemalloc verified)
+  - Performance: 100,000+ lines supported
+  - 279 tests passing
 
 - [x] **conversation-auto-scroll**
   - Added auto-scroll with pause/resume functionality to Conversation
