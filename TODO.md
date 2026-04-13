@@ -47,15 +47,15 @@
 
 ### Phase 3: Conversation Widget (P1 - Essential)
 
-- [ ] **conversation-basic**
+- [x] **conversation-basic**
   - Create basic scrollable content container (FR-006)
   - **Acceptance Criteria:**
-    - [ ] `src/clitic/widgets/conversation.py` exists with Conversation class
-    - [ ] Scrollable vertical container
-    - [ ] append(role, content) method to add blocks
-    - [ ] Mouse scroll and keyboard scroll support
-    - [ ] Exported from `src/clitic/__init__.py`
-    - [ ] Unit tests for Conversation
+    - [x] `src/clitic/widgets/conversation.py` exists with Conversation class
+    - [x] Scrollable vertical container
+    - [x] append(role, content) method to add blocks
+    - [x] Mouse scroll and keyboard scroll support
+    - [x] Exported from `src/clitic/__init__.py`
+    - [x] Unit tests for Conversation
   - **Dependencies:** base-app-class
   - **Priority:** P1
 
@@ -500,6 +500,17 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **conversation-basic**
+  - Created Conversation widget extending VerticalScroll
+  - Internal _ContentBlock widget for each message
+  - append(role, content) method adds blocks
+  - Supports user, assistant, system, tool roles
+  - clear() method removes all blocks
+  - block_count property
+  - Scroll actions: up, down, pageup, pagedown, home, end
+  - 23 new tests for Conversation
+  - Total: 251 tests passing
 
 - [x] **inputbar-submit-config**
   - Added configurable submit behavior to InputBar
