@@ -79,14 +79,51 @@
   - **Dependencies:** conversation-basic
   - **Priority:** P1
 
-- [ ] **conversation-block-management**
-  - Add content block management (FR-007)
+- [ ] **conversation-block-model**
+  - Refine block data model with ID, metadata, and timestamp (FR-007)
   - **Acceptance Criteria:**
-    - [ ] Block types: user, assistant, system, tool
-    - [ ] Pruning: remove old blocks when count exceeds threshold
-    - [ ] Navigation: Alt+Up/Down to move between blocks
-    - [ ] Each block has unique ID and metadata
+    - [ ] Block ID format: `{session_uuid}-{sequence_number}`
+    - [ ] `role: str` (generic, not locked to specific types)
+    - [ ] `content: str`
+    - [ ] `metadata: dict[str, Any]` — app can add custom data
+    - [ ] Timestamp added automatically on creation
   - **Dependencies:** conversation-virtual-rendering
+  - **Priority:** P1
+
+- [ ] **conversation-session-persistence**
+  - Add session persistence with JSONL storage (FR-007)
+  - **Acceptance Criteria:**
+    - [ ] `SessionManager` class with `persistence_enabled: bool` parameter
+    - [ ] When enabled, every append writes to JSONL file atomically
+    - [ ] Configurable file path (default: `~/.local/share/clitic/sessions/{session_uuid}.jsonl`)
+    - [ ] `resume_session(session_id)` loads previous session from file
+    - [ ] `list_sessions()` returns available sessions
+    - [ ] Showcase demonstrates `--resume session_id` CLI flag
+  - **Dependencies:** conversation-block-model
+  - **Priority:** P1
+
+- [ ] **conversation-block-pruning**
+  - Add memory-aware pruning with transparent retrieval (FR-007)
+  - **Acceptance Criteria:**
+    - [ ] Configurable `max_blocks_in_memory` threshold (default: 100, 0 = unlimited)
+    - [ ] When exceeded, oldest blocks removed from memory BUT still in JSONL file
+    - [ ] Pruning never deletes data — only evicts from memory
+    - [ ] Track which blocks are in memory vs persisted only
+    - [ ] `get_block(block_id)` retrieves from memory, falls back to file
+    - [ ] Scrolling up to pruned blocks triggers transparent reload from file
+    - [ ] Loading indicator briefly shown during block retrieval
+  - **Dependencies:** conversation-session-persistence
+  - **Priority:** P1
+
+- [ ] **conversation-block-navigation**
+  - Add block navigation and selection (FR-007)
+  - **Acceptance Criteria:**
+    - [ ] `Alt+Up` / `Alt+Down` navigate between blocks
+    - [ ] Navigation triggers load when reaching pruned blocks
+    - [ ] Selected block has visual highlight (distinct border/background)
+    - [ ] `selected_block` property returns current selection (or None)
+    - [ ] Navigation wraps at top/bottom (configurable)
+  - **Dependencies:** conversation-block-model
   - **Priority:** P1
 
 ### Phase 4: History System (P1 - Essential)
