@@ -117,6 +117,7 @@ class ShowcaseApp(App):
       Label("Press Ctrl+C or Ctrl+Q to quit", classes="help-text"),
       id="messages",
     )
+    # Note: Use submit_on_enter=False to make Shift+Enter submit and Enter insert newline
     yield InputBar(placeholder="Type your message here...", theme="github_light")
     yield Footer()
 

@@ -36,12 +36,12 @@
   - **Dependencies:** inputbar-basic
   - **Priority:** P1
 
-- [ ] **inputbar-submit-config**
+- [x] **inputbar-submit-config**
   - Add configurable submit behavior (FR-001)
   - **Acceptance Criteria:**
-    - [ ] Configurable: Enter submits vs Shift+Enter submits
-    - [ ] on_submit event/decorator for handling submissions
-    - [ ] Submit returns text and clears input
+    - [x] Configurable: Enter submits vs Shift+Enter submits
+    - [x] on_submit event/decorator for handling submissions
+    - [x] Submit returns text and clears input
   - **Dependencies:** inputbar-basic
   - **Priority:** P1
 
@@ -500,6 +500,16 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **inputbar-submit-config**
+  - Added configurable submit behavior to InputBar
+  - `submit_on_enter` parameter (default: True)
+  - When True: Enter submits, Shift+Enter inserts newline (default)
+  - When False: Shift+Enter submits, Enter inserts newline
+  - Property `submit_on_enter` for runtime access
+  - Updated key handling logic in `on_key()` method
+  - 9 new tests for configurable submit behavior
+  - Total: 228 tests passing
 
 - [x] **inputbar-autogrow**
   - Added auto-grow functionality to InputBar

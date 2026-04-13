@@ -828,3 +828,123 @@ class TestInputBarAutoGrow:
     input_bar.max_height = 20
     height = input_bar.get_content_height(container, viewport, 80)
     assert height == 15
+
+
+class TestInputBarSubmitConfiguration:
+  """Tests for configurable submit behavior."""
+
+  def test_default_submit_on_enter_is_true(self) -> None:
+    """Default submit_on_enter should be True."""
+    input_bar = InputBar()
+    assert input_bar.submit_on_enter is True
+
+  def test_submit_on_enter_parameter_accepted(self) -> None:
+    """submit_on_enter parameter should be accepted."""
+    input_bar = InputBar(submit_on_enter=False)
+    assert input_bar.submit_on_enter is False
+
+  def test_submit_on_enter_property_returns_value(self) -> None:
+    """submit_on_enter property should return the configured value."""
+    input_bar = InputBar(submit_on_enter=True)
+    assert input_bar.submit_on_enter is True
+
+  def test_enter_submits_when_submit_on_enter_true(self) -> None:
+    """Enter should submit when submit_on_enter=True (default)."""
+    input_bar = InputBar(text="test", submit_on_enter=True)
+
+    posted_messages: list[Message] = []
+
+    def capture_post(msg: Message) -> None:
+      posted_messages.append(msg)
+
+    with patch.object(input_bar, "post_message", side_effect=capture_post):
+      event = Key(key="enter", character=None)
+      input_bar.on_key(event)
+
+    submit_messages = [m for m in posted_messages if isinstance(m, InputBar.Submit)]
+    assert len(submit_messages) == 1
+
+  def test_shift_enter_does_not_submit_when_submit_on_enter_true(self) -> None:
+    """Shift+Enter should not submit when submit_on_enter=True."""
+    input_bar = InputBar(text="test", submit_on_enter=True)
+
+    posted_messages: list[Message] = []
+
+    def capture_post(msg: Message) -> None:
+      posted_messages.append(msg)
+
+    with patch.object(input_bar, "post_message", side_effect=capture_post):
+      event = Key(key="shift+enter", character=None)
+      input_bar.on_key(event)
+
+    submit_messages = [m for m in posted_messages if isinstance(m, InputBar.Submit)]
+    assert len(submit_messages) == 0
+
+  def test_enter_does_not_submit_when_submit_on_enter_false(self) -> None:
+    """Enter should not submit when submit_on_enter=False."""
+    input_bar = InputBar(text="test", submit_on_enter=False)
+
+    posted_messages: list[Message] = []
+
+    def capture_post(msg: Message) -> None:
+      posted_messages.append(msg)
+
+    with patch.object(input_bar, "post_message", side_effect=capture_post):
+      event = Key(key="enter", character=None)
+      input_bar.on_key(event)
+
+    submit_messages = [m for m in posted_messages if isinstance(m, InputBar.Submit)]
+    assert len(submit_messages) == 0
+
+  def test_shift_enter_submits_when_submit_on_enter_false(self) -> None:
+    """Shift+Enter should submit when submit_on_enter=False."""
+    input_bar = InputBar(text="test", submit_on_enter=False)
+
+    posted_messages: list[Message] = []
+
+    def capture_post(msg: Message) -> None:
+      posted_messages.append(msg)
+
+    with patch.object(input_bar, "post_message", side_effect=capture_post):
+      event = Key(key="shift+enter", character=None)
+      input_bar.on_key(event)
+
+    submit_messages = [m for m in posted_messages if isinstance(m, InputBar.Submit)]
+    assert len(submit_messages) == 1
+
+  def test_enter_not_stopped_when_submit_on_enter_false(self) -> None:
+    """Enter should not be stopped when submit_on_enter=False."""
+    input_bar = InputBar(text="test", submit_on_enter=False)
+    event = Key(key="enter", character=None)
+
+    input_bar.on_key(event)
+
+    # Event should not be stopped
+    assert not event._stop_propagation
+
+  def test_shift_enter_stopped_when_submit_on_enter_false(self) -> None:
+    """Shift+Enter should be stopped when submit_on_enter=False."""
+    input_bar = InputBar(text="test", submit_on_enter=False)
+    event = Key(key="shift+enter", character=None)
+
+    with patch.object(input_bar, "post_message"):
+      input_bar.on_key(event)
+
+    # Event should be stopped
+    assert event._stop_propagation
+
+  def test_disabled_widget_does_not_submit_with_submit_on_enter_false(self) -> None:
+    """Shift+Enter should not submit when widget is disabled (submit_on_enter=False)."""
+    input_bar = InputBar(text="test", submit_on_enter=False, disabled=True)
+
+    posted_messages: list[Message] = []
+
+    def capture_post(msg: Message) -> None:
+      posted_messages.append(msg)
+
+    with patch.object(input_bar, "post_message", side_effect=capture_post):
+      event = Key(key="shift+enter", character=None)
+      input_bar.on_key(event)
+
+    submit_messages = [m for m in posted_messages if isinstance(m, InputBar.Submit)]
+    assert len(submit_messages) == 0

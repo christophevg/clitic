@@ -1,7 +1,8 @@
-"""Multiline input widget with submit-on-Enter behavior.
+"""Multiline input widget with configurable submit behavior.
 
 This module provides the InputBar widget, a TextArea-based input component
-that supports multiline text editing with Enter-to-submit behavior.
+that supports multiline text editing with configurable Enter/Shift+Enter
+behavior for submission.
 """
 
 from __future__ import annotations
@@ -13,10 +14,10 @@ from textual.widgets import TextArea
 
 
 class InputBar(TextArea):
-  """Multiline input widget with submit-on-Enter behavior.
+  """Multiline input widget with configurable submit behavior.
 
   InputBar extends TextArea to provide a chat-style input experience where
-  pressing Enter submits the text and Shift+Enter inserts a newline.
+  Enter or Shift+Enter can be configured to submit text.
 
   The widget supports auto-grow functionality, expanding its height as content
   grows up to a configurable maximum height, with internal scrolling for longer
@@ -25,6 +26,7 @@ class InputBar(TextArea):
   Attributes:
       Submit: Message class emitted when input is submitted.
       max_height: Maximum height in lines for auto-grow (default: 10).
+      submit_on_enter: Whether Enter key submits (default: True).
 
   Example:
       ```python
@@ -74,6 +76,7 @@ class InputBar(TextArea):
     self,
     text: str = "",
     *,
+    submit_on_enter: bool = True,
     max_height: int = 10,
     language: str | None = None,
     theme: str = "monokai",
@@ -88,6 +91,9 @@ class InputBar(TextArea):
 
     Args:
         text: Initial text content (default: empty).
+        submit_on_enter: If True (default), Enter submits and Shift+Enter
+            inserts newline. If False, Shift+Enter submits and Enter inserts
+            newline.
         max_height: Maximum height in lines for auto-grow (default: 10).
         language: Language for syntax highlighting (default: None).
         theme: Theme for syntax highlighting (default: "monokai").
@@ -98,6 +104,7 @@ class InputBar(TextArea):
         placeholder: Placeholder text when empty.
         read_only: Whether the widget is read-only (default: False).
     """
+    self._submit_on_enter = submit_on_enter
     self._max_height = max_height
     super().__init__(
       text,
@@ -132,6 +139,15 @@ class InputBar(TextArea):
     """
     self._max_height = value
     self.refresh()
+
+  @property
+  def submit_on_enter(self) -> bool:
+    """Whether Enter key submits (True) or Shift+Enter submits (False).
+
+    Returns:
+        True if Enter submits (default), False if Shift+Enter submits.
+    """
+    return self._submit_on_enter
 
   def get_content_height(
     self, container: Size, viewport: Size, width: int
@@ -181,10 +197,15 @@ class InputBar(TextArea):
     self.insert("\n")
 
   def on_key(self, event: Key) -> None:
-    """Handle key events for submit-on-Enter behavior.
+    """Handle key events for configurable submit behavior.
 
-    Enter without Shift: submit the text.
-    Shift+Enter: insert newline (default TextArea behavior).
+    When submit_on_enter=True (default):
+      Enter without Shift: submit the text.
+      Shift+Enter: insert newline (default TextArea behavior).
+
+    When submit_on_enter=False:
+      Shift+Enter: submit the text.
+      Enter: insert newline (default TextArea behavior).
 
     Note: Shift+Enter detection requires terminal support for the Kitty
     keyboard protocol. Terminals without this support will treat Enter
@@ -197,16 +218,24 @@ class InputBar(TextArea):
     if self.disabled:
       return
 
-    # Handle Enter key (submit) vs Shift+Enter (newline)
-    # When Kitty keyboard protocol is supported, shift+enter is a distinct key
-    if event.key == "enter":
-      # Regular Enter: submit
-      event.stop()
-      event.prevent_default()
-      self.submit()
-    elif "enter" in event.key:
-      # Any other Enter variant (shift+enter, ctrl+enter, etc.)
-      # Let it pass through for TextArea to handle
-      return
-    # When shift+enter is detected (Kitty protocol supported), let it pass through
-    # to TextArea for default newline insertion
+    # Handle Enter key variants
+    if "enter" in event.key:
+      is_shift_enter = "shift" in event.key or event.key == "shift+enter"
+      is_plain_enter = event.key == "enter"
+
+      if self._submit_on_enter:
+        # Enter submits, Shift+Enter inserts newline
+        if is_plain_enter:
+          event.stop()
+          event.prevent_default()
+          self.submit()
+          return
+        # shift+enter passes through for newline insertion by TextArea
+      else:
+        # Shift+Enter submits, Enter inserts newline
+        if is_shift_enter:
+          event.stop()
+          event.prevent_default()
+          self.submit()
+          return
+        # plain enter passes through for newline insertion by TextArea
