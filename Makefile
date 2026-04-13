@@ -14,9 +14,6 @@ define check_venv
 	fi
 endef
 
-# Default target
-all: help
-
 ## Setup
 
 setup: ## Create pyenv virtualenv and install dependencies

@@ -120,8 +120,7 @@ exclude_lines = [
 env_list = ["py310", "py311", "py312"]
 
 [tool.tox.env_run_base]
-skip_install = true
-deps = [".[dev]"]
+extras = ["dev"]
 commands = [
   ["pytest", "-v", "--cov=clitic", "--cov-report=term-missing"],
 ]
