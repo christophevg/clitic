@@ -7,8 +7,11 @@ rendering for optimal performance with large content.
 
 from __future__ import annotations
 
+import uuid
 from bisect import bisect_right
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from typing import Any
 
 from rich.console import Console
 from rich.segment import Segment as RichSegment
@@ -23,20 +26,56 @@ from textual.strip import Strip
 _DEFAULT_WIDTH: int = 80
 
 
-@dataclass
-class _BlockData:
-  """Internal dataclass for storing content block information.
+@dataclass(frozen=True)
+class BlockInfo:
+  """Immutable block information for public API access.
 
   Attributes:
       block_id: Unique identifier for this block.
       role: The role of the message (user, assistant, system, tool).
       content: The text content of the message.
-      line_count: Number of lines this block occupies when rendered.
+      metadata: Immutable metadata for custom application data.
+      timestamp: UTC-aware timestamp when the block was created.
+      sequence: 0-indexed position in the conversation.
   """
 
   block_id: str
   role: str
   content: str
+  metadata: dict[str, Any] = field(default_factory=dict)
+  timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+  sequence: int = 0
+
+  @property
+  def relative_timestamp(self) -> str:
+    """Human-readable relative time (e.g., '2 min ago')."""
+    now = datetime.now(timezone.utc)
+    delta = now - self.timestamp
+    total_seconds = int(delta.total_seconds())
+
+    if total_seconds < 60:
+      return "just now"
+    elif total_seconds < 3600:
+      minutes = total_seconds // 60
+      return f"{minutes} min{'s' if minutes != 1 else ''} ago"
+    elif total_seconds < 86400:
+      hours = total_seconds // 3600
+      return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    else:
+      days = total_seconds // 86400
+      return f"{days} day{'s' if days != 1 else ''} ago"
+
+
+@dataclass
+class _BlockData:
+  """Internal dataclass for storing content block information.
+
+  Attributes:
+      info: The immutable BlockInfo for this block.
+      line_count: Number of lines this block occupies when rendered.
+  """
+
+  info: BlockInfo
   line_count: int = 0
 
 
@@ -51,6 +90,7 @@ class Conversation(ScrollView):
   Attributes:
       block_count: The number of content blocks in the conversation.
       auto_scroll: Whether to automatically scroll to new content.
+      session_id: The unique session UUID for this conversation.
 
   Example:
       ```python
@@ -94,6 +134,7 @@ class Conversation(ScrollView):
   def __init__(
     self,
     *,
+    session_uuid: str | None = None,
     auto_scroll: bool = True,
     name: str | None = None,
     id: str | None = None,  # noqa: A002
@@ -103,20 +144,29 @@ class Conversation(ScrollView):
     """Initialize the Conversation.
 
     Args:
+        session_uuid: Optional UUID for the session. If not provided,
+            a new UUID will be generated.
         auto_scroll: Whether to automatically scroll to new content.
         name: Name of the widget.
         id: ID of the widget.
         classes: Space-separated CSS classes.
         disabled: Whether the widget is disabled.
     """
+    self._session_uuid: str = session_uuid or str(uuid.uuid4())
+    self._sequence_counter: int = 0
+    self._block_index: dict[str, int] = {}
     self._blocks: list[_BlockData] = []
-    self._block_counter: int = 0
     self._strips: list[Strip] = []
     self._cumulative_heights: list[int] = []  # Running total of lines per block
     self._total_lines: int = 0
     self._last_width: int = 0
     super().__init__(name=name, id=id, classes=classes, disabled=disabled)
     self.auto_scroll = auto_scroll
+
+  @property
+  def session_id(self) -> str:
+    """Read-only session UUID."""
+    return self._session_uuid
 
   def _get_content_width(self) -> int:
     """Get the available content width for rendering.
@@ -141,17 +191,17 @@ class Conversation(ScrollView):
         List of Strip objects, one per line.
     """
     # Create the styled text based on role
-    if block.role == "user":
-      text = Text(f"[You] {block.content}", style=Style(bold=True, color="blue"))
-    elif block.role == "assistant":
-      text = Text(f"[Assistant] {block.content}", style=Style(bold=True, color="green"))
-    elif block.role == "system":
-      text = Text(f"[System] {block.content}", style=Style(bold=True, color="yellow"))
-    elif block.role == "tool":
-      text = Text(f"[Tool] {block.content}", style=Style(bold=True, color="magenta"))
+    if block.info.role == "user":
+      text = Text(f"[You] {block.info.content}", style=Style(bold=True, color="blue"))
+    elif block.info.role == "assistant":
+      text = Text(f"[Assistant] {block.info.content}", style=Style(bold=True, color="green"))
+    elif block.info.role == "system":
+      text = Text(f"[System] {block.info.content}", style=Style(bold=True, color="yellow"))
+    elif block.info.role == "tool":
+      text = Text(f"[Tool] {block.info.content}", style=Style(bold=True, color="magenta"))
     else:
       # Default styling for unknown roles
-      text = Text(f"[{block.role}] {block.content}", style=Style(bold=True, color="grey62"))
+      text = Text(f"[{block.info.role}] {block.info.content}", style=Style(bold=True, color="grey62"))
 
     # Wrap the text to the available width
     # Using renderables requires converting to lines
@@ -276,18 +326,25 @@ class Conversation(ScrollView):
     width = self.scrollable_content_region.width if self.scrollable_content_region else _DEFAULT_WIDTH
     return strip.crop_extend(int(scroll_x), int(scroll_x) + width, getattr(self, "rich_style", None))
 
-  def append(self, role: str, content: str) -> str:
+  def append(
+    self,
+    role: str,
+    content: str,
+    metadata: dict[str, Any] | None = None,
+  ) -> str:
     """Add a new content block to the conversation.
 
     Args:
         role: The role of the message (user, assistant, system, tool).
         content: The text content of the message.
+        metadata: Optional metadata dictionary for custom application data.
 
     Returns:
         The unique ID of the created block.
     """
-    block_id = f"block-{self._block_counter}"
-    self._block_counter += 1
+    block_id = f"{self._session_uuid}-{self._sequence_counter}"
+    sequence = self._sequence_counter
+    self._sequence_counter += 1
 
     # Get current width for rendering
     width = self._get_content_width()
@@ -299,9 +356,20 @@ class Conversation(ScrollView):
       # Now append the new block at the new width
       width = self._get_content_width()
 
-    # Create the block data
-    block = _BlockData(block_id=block_id, role=role, content=content)
+    # Create the BlockInfo and BlockData
+    info = BlockInfo(
+      block_id=block_id,
+      role=role,
+      content=content,
+      metadata=metadata if metadata is not None else {},
+      timestamp=datetime.now(timezone.utc),
+      sequence=sequence,
+    )
+    block = _BlockData(info=info)
     self._blocks.append(block)
+
+    # Update the block index for O(1) lookup
+    self._block_index[block_id] = len(self._blocks) - 1
 
     # Render the block to strips
     block_strips = self._render_block_to_strips(block, width)
@@ -333,12 +401,16 @@ class Conversation(ScrollView):
     return block_id
 
   def clear(self) -> None:
-    """Clear all content blocks from the conversation."""
+    """Clear all content blocks from the conversation.
+
+    Note: This does NOT reset the sequence counter or session UUID.
+    Block IDs will continue from the current sequence number.
+    """
     self._blocks.clear()
     self._strips.clear()
     self._cumulative_heights.clear()
+    self._block_index.clear()
     self._total_lines = 0
-    self._block_counter = 0
     self._last_width = 0
     self.virtual_size = Size(0, 0)
     self.refresh()
@@ -351,6 +423,33 @@ class Conversation(ScrollView):
         The number of content blocks.
     """
     return len(self._blocks)
+
+  def get_block(self, block_id: str) -> BlockInfo | None:
+    """Get block by ID. O(1) performance.
+
+    Args:
+        block_id: The unique identifier of the block.
+
+    Returns:
+        The BlockInfo if found, None otherwise.
+    """
+    if block_id not in self._block_index:
+      return None
+    index = self._block_index[block_id]
+    return self._blocks[index].info
+
+  def get_block_at_index(self, index: int) -> BlockInfo | None:
+    """Get block by sequence position. O(1) performance.
+
+    Args:
+        index: The 0-indexed position in the conversation.
+
+    Returns:
+        The BlockInfo if found, None otherwise.
+    """
+    if 0 <= index < len(self._blocks):
+      return self._blocks[index].info
+    return None
 
   def get_block_id_at_line(self, line: int) -> str | None:
     """Get the block ID at a specific line index.
@@ -369,7 +468,7 @@ class Conversation(ScrollView):
     # Binary search to find which block this line belongs to
     block_index = bisect_right(self._cumulative_heights, line)
     if 0 <= block_index < len(self._blocks):
-      return self._blocks[block_index].block_id
+      return self._blocks[block_index].info.block_id
     return None
 
   def action_scroll_up(self) -> None:

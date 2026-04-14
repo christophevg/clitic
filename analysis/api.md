@@ -911,7 +911,334 @@ The project is ready to proceed with implementation following the phased approac
 
 ---
 
-## 12. Related Documents
+## 12. Task-Specific Review: conversation-block-model
+
+**Date:** 2026-04-14
+**Reviewer:** API Architect Agent
+**Task:** Review API design for conversation-block-model task
+
+### 12.1 Summary
+
+This section reviews the API design for the conversation-block-model task, which refines the block data model for the Conversation widget. The design introduces a public `BlockInfo` dataclass, session UUID management, timestamps, and metadata support.
+
+**Verdict:** Approved with minor recommendations
+
+### 12.2 Current Implementation
+
+**Existing Internal Dataclass:**
+
+```python
+@dataclass
+class _BlockData:
+    block_id: str
+    role: str
+    content: str
+    line_count: int = 0
+```
+
+**Issues:**
+- NOT frozen (mutable)
+- No timestamp
+- No metadata
+- Block ID format is `block-{counter}` (no session context)
+
+**Missing Public API:**
+- `get_block(block_id)` method
+- Session UUID management
+- Metadata support
+
+### 12.3 Proposed BlockInfo Dataclass
+
+```python
+from datetime import datetime, timezone
+from typing import Any
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class BlockInfo:
+    """Immutable block metadata container.
+
+    Attributes:
+        id: Unique identifier in format "{session_uuid}-{sequence_number}"
+        role: Generic role identifier (e.g., "user", "assistant", "system")
+        content: Full block content text
+        metadata: Immutable metadata dictionary set at creation
+        timestamp: Timezone-aware UTC datetime of block creation
+    """
+    id: str
+    role: str
+    content: str
+    metadata: dict[str, Any]
+    timestamp: datetime
+```
+
+**API Design Review:**
+
+| Aspect | Assessment | Notes |
+|--------|------------|-------|
+| Frozen dataclass | APPROVED | Ensures immutability, prevents accidental modification |
+| Field ordering | APPROVED | Logical order: id, role, content, metadata, timestamp |
+| Type hints | APPROVED | Full type annotations, mypy compatible |
+| Field naming | APPROVED | Clear, self-documenting names |
+| Documentation | APPROVED | Docstring with attributes listed |
+
+**Recommendation:** Add custom `__repr__` to truncate long content:
+
+```python
+def __repr__(self) -> str:
+    content_preview = self.content[:50] + "..." if len(self.content) > 50 else self.content
+    return f"BlockInfo(id={self.id!r}, role={self.role!r}, content={content_preview!r}, ...)"
+```
+
+### 12.4 Internal _BlockData Design
+
+**Question:** Should `_BlockData` remain as a separate internal class or be replaced by `BlockInfo`?
+
+**Recommendation:** Keep `_BlockData` as internal implementation detail, but derive from `BlockInfo`:
+
+```python
+@dataclass
+class _BlockData:
+    """Internal block data with rendering metadata."""
+    info: BlockInfo  # Public immutable data
+    line_count: int = 0  # Internal rendering state
+```
+
+This approach:
+- Maintains separation between public API and internal state
+- Avoids duplication of fields
+- Makes conversion to `BlockInfo` trivial (just return `self._blocks[i].info`)
+
+### 12.5 Session UUID Management
+
+```python
+import uuid
+
+class Conversation(ScrollView):
+    def __init__(
+        self,
+        *,
+        session_uuid: str | None = None,
+        auto_scroll: bool = True,
+        name: str | None = None,
+        id: str | None = None,
+        classes: str | None = None,
+        disabled: bool = False,
+    ) -> None:
+        self._session_uuid = session_uuid or str(uuid.uuid4())
+        self._sequence_counter: int = 0
+        # ... rest of init
+```
+
+**API Design Review:**
+
+| Aspect | Assessment | Notes |
+|--------|------------|-------|
+| Optional parameter | APPROVED | Defaults to auto-generated UUID4 |
+| Type hint | APPROVED | `str | None` is correct |
+| UUID format | APPROVED | Standard UUID4 format |
+| Private attribute | APPROVED | `_session_uuid` properly encapsulated |
+
+**Recommendation:** Add a read-only property for session UUID:
+
+```python
+@property
+def session_id(self) -> str:
+    """The unique identifier for this conversation session."""
+    return self._session_uuid
+```
+
+### 12.6 Block ID Generation
+
+**Proposed format:** `{session_uuid}-{sequence_number}`
+
+```python
+def append(self, role: str, content: str, metadata: dict[str, Any] | None = None) -> str:
+    block_id = f"{self._session_uuid}-{self._sequence_counter}"
+    self._sequence_counter += 1
+    # ...
+```
+
+**API Design Review:**
+
+| Aspect | Assessment | Notes |
+|--------|------------|-------|
+| Format | APPROVED | Globally unique, includes session context |
+| Atomicity | NEEDS ATTENTION | Counter increment must be atomic with ID generation |
+| Collision resistance | APPROVED | UUID4 + sequential counter = no collisions within session |
+
+**Critical Recommendation:** Never reset sequence counter, even on `clear()`. This ensures ID uniqueness across the session lifetime.
+
+### 12.7 append() Method Signature
+
+**Proposed signature:**
+
+```python
+def append(
+    self,
+    role: str,
+    content: str,
+    metadata: dict[str, Any] | None = None,
+) -> str:
+    """Add a new content block to the conversation.
+
+    Args:
+        role: The role of the message (user, assistant, system, tool, etc.)
+        content: The text content of the message.
+        metadata: Optional metadata dictionary (immutable after creation).
+
+    Returns:
+        The unique ID of the created block.
+    """
+```
+
+**API Design Review:**
+
+| Aspect | Assessment | Notes |
+|--------|------------|-------|
+| Parameter ordering | APPROVED | Required params first, optional last |
+| Default for metadata | APPROVED | `None` converted to `{}` at creation |
+| Return type | APPROVED | Returns `str` (block ID) for consistency |
+| Backward compatible | APPROVED | Optional param doesn't break existing code |
+
+**Recommendation:** Document that metadata is copied at creation:
+
+```python
+# In append() implementation:
+block_metadata = dict(metadata) if metadata else {}
+# This creates a copy, ensuring caller can't modify after
+```
+
+### 12.8 get_block() Method
+
+**Proposed signature:**
+
+```python
+def get_block(self, block_id: str) -> BlockInfo | None:
+    """Retrieve block metadata by ID.
+
+    Args:
+        block_id: The unique identifier of the block.
+
+    Returns:
+        BlockInfo if found, None if block doesn't exist.
+    """
+```
+
+**Performance Concern:** The current implementation stores blocks in a list. `get_block()` would require O(n) linear search.
+
+**Critical Recommendation:** Add a block ID index for O(1) lookup:
+
+```python
+def __init__(self, ...) -> None:
+    self._blocks: list[_BlockData] = []
+    self._block_index: dict[str, int] = {}  # block_id -> list index
+    # ...
+
+def append(...) -> str:
+    block_id = f"{self._session_uuid}-{self._sequence_counter}"
+    index = len(self._blocks)
+    self._block_index[block_id] = index
+    # ... create and append block
+    self._sequence_counter += 1
+    return block_id
+
+def get_block(self, block_id: str) -> BlockInfo | None:
+    if block_id not in self._block_index:
+        return None
+    index = self._block_index[block_id]
+    return self._blocks[index].info
+
+def clear(self) -> None:
+    self._blocks.clear()
+    self._block_index.clear()
+    # DO NOT reset sequence counter
+```
+
+### 12.9 Type Safety Analysis
+
+**Metadata Type:** `dict[str, Any]` - APPROVED for maximum flexibility. Users can define their own TypedDict for type checking if needed.
+
+**Timestamp Type:** `datetime` with timezone-aware UTC - APPROVED. Standard library type, prevents local/UTC confusion, serializable to ISO 8601.
+
+### 12.10 Future-Proofing
+
+**Session Persistence (conversation-session-persistence):**
+The `BlockInfo` dataclass is well-suited for JSONL serialization:
+
+```python
+import json
+
+def block_to_json(block: BlockInfo) -> str:
+    return json.dumps({
+        "id": block.id,
+        "role": block.role,
+        "content": block.content,
+        "metadata": block.metadata,
+        "timestamp": block.timestamp.isoformat(),
+    })
+```
+
+**Block Pruning (conversation-block-pruning):**
+The `get_block()` method is the foundation for transparent retrieval. The O(1) index design supports this pattern.
+
+### 12.11 Recommendations Summary
+
+**Required Changes:**
+
+1. Add `session_id` property for read-only access to session UUID
+2. Add `_block_index: dict[str, int]` for O(1) block lookup
+3. Never reset sequence counter on `clear()` to prevent ID collisions
+
+**Suggested Improvements:**
+
+4. Custom `__repr__` for `BlockInfo` to truncate long content
+5. Document metadata immutability in docstrings
+6. Add `__slots__` to `BlockInfo` for memory efficiency (optional)
+
+### 12.12 Acceptance Criteria Verification
+
+| Criterion | Status | Notes |
+|-----------|--------|-------|
+| `BlockInfo` dataclass with `frozen=True` | APPROVED | Design is correct |
+| Block ID format: `{session_uuid}-{sequence_number}` | APPROVED | Add atomicity note |
+| `role: str` generic type | APPROVED | Extensible design |
+| `content: str` full content | APPROVED | Correct |
+| `metadata: dict[str, Any]` immutable | APPROVED | Design ensures immutability via frozen dataclass |
+| `timestamp: datetime` with UTC | APPROVED | Standard approach |
+| Session UUID auto-generated | APPROVED | UUID4 is appropriate |
+| Optional `session_uuid` parameter | APPROVED | Keyword-only, correct position |
+| `get_block(block_id) -> BlockInfo | None` | APPROVED | Add O(1) index for performance |
+
+### 12.13 Action Items for conversation-block-model
+
+- [ ] Implement `BlockInfo` frozen dataclass with custom `__repr__`
+- [ ] Add `session_id` property to `Conversation`
+- [ ] Add `_block_index` for O(1) block lookup
+- [ ] Update `_BlockData` to wrap `BlockInfo` + `line_count`
+- [ ] Update `append()` to accept `metadata` parameter
+- [ ] Update `clear()` to NOT reset sequence counter
+- [ ] Implement `get_block()` with index-based lookup
+- [ ] Update all docstrings
+- [ ] Add unit tests for new functionality
+
+### 12.14 Conclusion
+
+The proposed API design for conversation-block-model is **approved** with the recommendations noted above. The design follows Python best practices, maintains consistency with the existing codebase, and provides a clean foundation for future features (persistence, pruning, navigation).
+
+**Key strengths:**
+- **Immutability:** `BlockInfo` is frozen, preventing accidental modification
+- **Extensibility:** Generic `role: str` and `metadata: dict[str, Any]` support future use cases
+- **Type safety:** Full type hints throughout
+- **Performance:** O(1) block lookup with index (once implemented)
+
+**Critical considerations:**
+- Ensure `_block_index` is properly maintained for O(1) lookup
+- Never reset sequence counter to prevent ID collisions
+
+---
+
+## 13. Related Documents
 
 - `analysis/functional.md` - Functional analysis with task breakdown
 - `docs/requirements.md` - Full requirements specification

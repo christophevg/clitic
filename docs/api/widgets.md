@@ -192,3 +192,134 @@ Supported terminals:
 - Alacritty
 
 If your terminal doesn't support this, Enter and Shift+Enter will behave identically.
+
+## Conversation
+
+The `Conversation` widget is a scrollable content container for displaying conversation messages with virtual rendering for optimal performance.
+
+```python
+from textual.app import App, ComposeResult
+from clitic import Conversation
+
+class MyApp(App):
+    def compose(self) -> ComposeResult:
+        yield Conversation()
+
+    def on_mount(self) -> None:
+        conversation = self.query_one(Conversation)
+        conversation.append("user", "Hello!")
+        conversation.append("assistant", "Hi there!")
+```
+
+### Key Features
+
+- **Virtual rendering**: O(1) per-line rendering, supports 100,000+ lines
+- **Auto-scroll**: Automatically scrolls to new content, pauses when user scrolls up
+- **Block management**: Each message is a block with unique ID, metadata, and timestamp
+- **Session tracking**: Unique session ID for persistence support
+- **Block retrieval**: O(1) lookup by block ID or sequence index
+
+### Constructor
+
+```python
+Conversation(
+    session_uuid: str | None = None,  # Optional session UUID (auto-generated if None)
+    auto_scroll: bool = True,          # Auto-scroll to new content
+    name: str | None = None,           # Widget name
+    id: str | None = None,             # Widget ID
+    classes: str | None = None,        # CSS classes
+    disabled: bool = False,            # Whether disabled
+)
+```
+
+### Methods
+
+| Method | Description |
+|--------|-------------|
+| `append(role, content, metadata=None)` | Add a block, returns block ID |
+| `clear()` | Clear all blocks (sequence counter continues) |
+| `get_block(block_id)` | Get block by ID, returns `BlockInfo \| None` |
+| `get_block_at_index(index)` | Get block by position, returns `BlockInfo \| None` |
+| `get_block_id_at_line(line)` | Get block ID at line number |
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `block_count` | `int` | Number of blocks in conversation |
+| `session_id` | `str` | Unique session UUID (read-only) |
+| `auto_scroll` | `bool` | Whether auto-scroll is enabled |
+
+### BlockInfo
+
+When you call `get_block()` or `get_block_at_index()`, you receive a `BlockInfo` object:
+
+```python
+@dataclass(frozen=True)
+class BlockInfo:
+    block_id: str              # Unique identifier: "{session_uuid}-{sequence}"
+    role: str                  # Message role (user, assistant, system, tool)
+    content: str               # Text content
+    metadata: dict[str, Any]   # Custom metadata (immutable)
+    timestamp: datetime        # UTC-aware timestamp
+    sequence: int              # 0-indexed position
+
+    @property
+    def relative_timestamp(self) -> str:
+        """Human-readable time: 'just now', '2 mins ago', '1 hour ago', etc."""
+```
+
+### Example: Chat with Metadata
+
+```python
+from textual.app import App, ComposeResult
+from clitic import Conversation
+
+class ChatApp(App):
+    def compose(self) -> ComposeResult:
+        yield Conversation(id="chat")
+
+    def add_message(self, role: str, text: str, metadata: dict = None) -> None:
+        conversation = self.query_one(Conversation)
+        block_id = conversation.append(role, text, metadata=metadata)
+        
+        # Retrieve block info
+        block = conversation.get_block(block_id)
+        print(f"Block {block.sequence}: {block.relative_timestamp}")
+        
+    def show_session(self) -> None:
+        conversation = self.query_one(Conversation)
+        print(f"Session ID: {conversation.session_id}")
+```
+
+### Example: Block Navigation
+
+```python
+conversation = self.query_one(Conversation)
+
+# Navigate through blocks
+for i in range(conversation.block_count):
+    block = conversation.get_block_at_index(i)
+    print(f"[{block.role}] {block.content[:50]}...")
+
+# Get the most recent block
+if conversation.block_count > 0:
+    last_block = conversation.get_block_at_index(conversation.block_count - 1)
+    print(f"Last message: {last_block.relative_timestamp}")
+```
+
+### Auto-Scroll Behavior
+
+- **Enabled by default**: New content scrolls into view
+- **Paused when scrolling up**: User can read history
+- **Resumed when at bottom**: Auto-scroll reactivates
+- **Visual indicator**: CSS class `paused` added when auto-scroll is off
+
+```python
+# Disable auto-scroll at creation
+conversation = Conversation(auto_scroll=False)
+
+# Toggle programmatically
+conversation.auto_scroll = False  # Pause
+conversation.auto_scroll = True   # Resume
+```

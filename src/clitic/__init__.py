@@ -17,6 +17,7 @@ from clitic.plugins import (
   Renderable,
 )
 from clitic.widgets import Conversation, InputBar
+from clitic.widgets.conversation import BlockInfo
 
 __version__ = "0.1.0"
 
@@ -38,6 +39,7 @@ __all__ = [
   "Completion",
   "CompletionProvider",
   # Widgets
+  "BlockInfo",
   "Conversation",
   "InputBar",
 ]

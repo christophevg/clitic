@@ -339,7 +339,121 @@ Each task in TODO.md should have:
 
 ---
 
-## 8. Next Steps
+## 8. Task-Specific Design Decisions
+
+### 8.1 conversation-block-model Design Decisions
+
+**Date:** 2026-04-14
+
+#### Design Decision Record
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Timestamp format | `datetime` (timezone-aware UTC) | Standard library type, timezone-safe, serializable to ISO 8601 |
+| Metadata mutability | Immutable - set once at block creation | Prevents accidental modification, supports reproducibility, simplifies caching |
+| Session UUID | Auto-generate + optional constructor parameter | Defaults to UUID4 for convenience, allows explicit setting for session resumption |
+| Public API | Add `get_block(block_id) -> BlockInfo` method | Read-only access pattern, returns copy to maintain immutability |
+
+#### Refined Implementation Specification
+
+**Block Data Model**
+
+```python
+@dataclass(frozen=True)
+class BlockInfo:
+    """Immutable block metadata container."""
+    id: str                      # Format: "{session_uuid}-{sequence_number}"
+    role: str                    # Generic role identifier (e.g., "user", "assistant", "system")
+    content: str                 # Block content text
+    metadata: dict[str, Any]     # Immutable dict set at creation
+    timestamp: datetime          # Timezone-aware UTC datetime
+```
+
+**Session UUID Management**
+
+```python
+class Conversation(Widget):
+    def __init__(
+        self,
+        session_uuid: str | None = None,
+        **kwargs: Any
+    ) -> None:
+        self._session_uuid = session_uuid or str(uuid.uuid4())
+        self._sequence_counter = 0
+```
+
+**Public API**
+
+```python
+def get_block(self, block_id: str) -> BlockInfo | None:
+    """Retrieve block by ID. Returns None if not found."""
+    # Search in-memory blocks
+    # Return a copy to maintain immutability
+```
+
+#### Updated Acceptance Criteria
+
+The task `conversation-block-model` should verify:
+
+- [ ] `BlockInfo` dataclass defined with `frozen=True`
+- [ ] Block ID format: `{session_uuid}-{sequence_number}` with atomic increment
+- [ ] `role: str` (generic, extensible string type)
+- [ ] `content: str` (full block content)
+- [ ] `metadata: dict[str, Any]` immutable after creation (frozen dataclass)
+- [ ] `timestamp: datetime` with UTC timezone (`datetime.now(timezone.utc)`)
+- [ ] Session UUID auto-generated via `uuid.uuid4()` if not provided
+- [ ] Optional `session_uuid` parameter in `Conversation.__init__`
+- [ ] `get_block(block_id) -> BlockInfo | None` method for read-only access
+- [ ] Unit tests for all BlockInfo properties
+- [ ] Unit tests for session UUID generation and custom values
+- [ ] Unit tests for timestamp timezone handling
+
+#### Integration Points
+
+| Component | Integration |
+|-----------|-------------|
+| `Conversation.append()` | Creates BlockInfo, increments sequence, stores in blocks dict |
+| `Conversation.get_block()` | Returns BlockInfo copy or None |
+| `SessionManager` (future) | Uses session_uuid for persistence |
+| Pruning (future) | Uses get_block() for transparent retrieval |
+
+#### UX Recommendations (2026-04-14)
+
+| Recommendation | Rationale | Implementation |
+|----------------|----------|----------------|
+| Add `sequence: int` field | Display-friendly numbering for navigation ("Block 3 of 15") | Include in BlockInfo dataclass |
+| Add `relative_timestamp` property | Human-readable display for timestamps | Computed property returning "2 min ago", "Yesterday", etc. |
+| Add `get_block_at_index(index)` | O(1) navigation by sequence for smooth UX | Method to access block by sequential position |
+
+#### Updated BlockInfo Specification
+
+```python
+@dataclass(frozen=True)
+class BlockInfo:
+    """Immutable block metadata container."""
+    id: str                      # Format: "{session_uuid}-{sequence_number}"
+    sequence: int                # Sequential number (0-indexed) for display
+    role: str                    # Generic role identifier (e.g., "user", "assistant", "system")
+    content: str                 # Block content text
+    metadata: dict[str, Any]     # Immutable dict set at creation
+    timestamp: datetime          # Timezone-aware UTC datetime
+
+    @property
+    def relative_timestamp(self) -> str:
+        """Human-readable relative time (e.g., '2 min ago', 'Yesterday')."""
+        # Calculate delta from now
+        ...
+```
+
+#### Review Status
+
+- [x] Functional analysis complete
+- [ ] API Architect review pending
+- [x] UI/UX Designer review complete
+
+---
+
+## 9. Next Steps
 
 1. Review and approve this analysis
 2. Update TODO.md with atomic tasks

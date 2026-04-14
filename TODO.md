@@ -79,16 +79,6 @@
   - **Dependencies:** conversation-basic
   - **Priority:** P1
 
-- [ ] **conversation-block-model**
-  - Refine block data model with ID, metadata, and timestamp (FR-007)
-  - **Acceptance Criteria:**
-    - [ ] Block ID format: `{session_uuid}-{sequence_number}`
-    - [ ] `role: str` (generic, not locked to specific types)
-    - [ ] `content: str`
-    - [ ] `metadata: dict[str, Any]` — app can add custom data
-    - [ ] Timestamp added automatically on creation
-  - **Dependencies:** conversation-virtual-rendering
-  - **Priority:** P1
 
 - [ ] **conversation-session-persistence**
   - Add session persistence with JSONL storage (FR-007)
@@ -537,6 +527,20 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **conversation-block-model**
+  - Refined block data model with ID, metadata, and timestamp
+  - Created `BlockInfo` frozen dataclass (public API)
+  - Block ID format: `{session_uuid}-{sequence_number}`
+  - Added `sequence`, `metadata`, `timestamp`, `relative_timestamp` fields
+  - Added `session_uuid` parameter to `Conversation.__init__`
+  - Added `session_id` property (read-only)
+  - Added `get_block(block_id)` method (O(1) lookup)
+  - Added `get_block_at_index(index)` method (O(1) lookup)
+  - Updated `append()` to accept optional `metadata`
+  - Updated `clear()` to NOT reset sequence counter
+  - Exported `BlockInfo` from package
+  - 309 tests passing with 87% coverage
 
 - [x] **conversation-virtual-rendering**
   - Implemented virtual rendering using Textual's Line API with ScrollView

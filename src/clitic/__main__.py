@@ -76,7 +76,21 @@ class ShowcaseApp(App):
     yield Footer()
 
   def on_mount(self) -> None:
-    """Focus the input bar when the app starts."""
+    """Focus the input bar when the app starts and add welcome message."""
+    conversation = self.query_one(Conversation)
+
+    # Demonstrate session_id access
+    session_info = f"Session ID: {conversation.session_id[:8]}..."
+
+    # Add welcome messages demonstrating metadata usage
+    conversation.append(
+      "system",
+      f"Welcome to clitic v{__version__}!",
+      metadata={"type": "welcome", "version": __version__},
+    )
+    conversation.append("system", session_info, metadata={"type": "info"})
+
+    # Demonstrate block retrieval
     self.query_one(InputBar).focus()
 
   def on_input_bar_submit(self, event: InputBar.Submit) -> None:
@@ -87,12 +101,34 @@ class ShowcaseApp(App):
     """
     self._message_count += 1
 
-    # Add the user's message to the conversation
+    # Add the user's message to the conversation with metadata
     conversation = self.query_one(Conversation)
-    conversation.append("user", event.text)
+    user_block_id = conversation.append(
+      "user",
+      event.text,
+      metadata={"source": "user_input", "count": self._message_count},
+    )
 
-    # Add a system response
-    conversation.append("clitic", f"Received message #{self._message_count}!")
+    # Demonstrate block retrieval by ID
+    user_block = conversation.get_block(user_block_id)
+    if user_block:
+      # Access block info (demonstrating BlockInfo API)
+      relative_time = user_block.relative_timestamp
+      response_text = f"Received message #{self._message_count}!"
+      response_text += f" (sent {relative_time})"
+
+      # Also demonstrate get_block_at_index
+      block_count = conversation.block_count
+      if block_count > 0:
+        last_block = conversation.get_block_at_index(block_count - 1)
+        if last_block:
+          response_text += f" [Block {last_block.sequence}]"
+
+      conversation.append(
+        "clitic",
+        response_text,
+        metadata={"type": "response", "user_block_id": user_block_id},
+      )
 
     # Focus back on the input
     self.query_one(InputBar).focus()

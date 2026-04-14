@@ -1,34 +1,12 @@
-created: 2026-04-11T14:30:00Z
+created: 2026-04-14T10:30:00Z
 project: clitic
 analysts:
   - functional-analyst
   - api-architect
   - ui-ux-designer
 checksums:
-  README.md: sha256:2840449d34634f6f64a271a936f4346ee5c827789d2e9556e274e8cf0462750a
-  TODO.md: sha256:529b33b5440456f7c3d59d03917435efabdbf72bb999a70cc8b79994f335cc7b
-consensus: reporting/clitic-initial-analysis/consensus.md
+  README.md: sha256:a211644c4969de260ee6b9f4ecb1e33e06cd5528c78337ec74bb05c72f43f3ad
+  TODO.md: sha256:8e4af10f64933ceae65804854c3e96c1fc51cc23e4c12e8de0c9909ce722b6b9
+consensus: reporting/conversation-block-model/consensus.md
 tasks:
-  - fix-quickstart-example
-  - setup-py.typed
-  - setup-ci
-  - exception-hierarchy
-  - plugin-base-classes
-  - base-app-class
-  - base-styles
-  - inputbar-basic
-  - inputbar-cursor
-  - inputbar-autogrow
-  - inputbar-submit-config
-  - conversation-basic
-  - conversation-auto-scroll
-  - conversation-virtual-rendering
-  - conversation-block-management
-  - history-storage
-  - history-navigation
-  - plugin-markdown-basic
-  - plugin-markdown-code-blocks
-  - plugin-diff-unified
-  - plugin-terminal-ansi
-  - plugin-error-handling
-  - themes-basic
+  - conversation-block-model

@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `BlockInfo` frozen dataclass for immutable block information
+  - `block_id`: Unique identifier with session UUID prefix
+  - `role`: Message role (user, assistant, system, tool)
+  - `content`: Text content
+  - `metadata`: Custom application data (immutable)
+  - `timestamp`: UTC-aware creation timestamp
+  - `sequence`: 0-indexed position in conversation
+  - `relative_timestamp`: Human-readable time property
+- `Conversation.session_id` property for session tracking
+- `Conversation.get_block(block_id)` method for O(1) block lookup by ID
+- `Conversation.get_block_at_index(index)` method for O(1) block lookup by position
+- `Conversation.append()` now accepts optional `metadata` parameter
+- `Conversation.__init__` now accepts optional `session_uuid` parameter
+
+### Changed
+
+- Block ID format changed from `block-{counter}` to `{session_uuid}-{sequence}`
+- `Conversation.clear()` no longer resets the sequence counter
+- Sequence counter continues incrementing across clear operations
+
 ## [0.1.0] - 2026-04-11
 
 ### Added

@@ -868,7 +868,43 @@ The following UX identifiers map to TODO.md tasks:
 
 ---
 
-## 17. Summary
+## 17. Task-Specific UX Reviews
+
+### 17.1 conversation-block-model Review (2026-04-14)
+
+**Task:** Refine block data model with ID, metadata, and timestamp (FR-007)
+
+**UX Assessment:**
+
+| Aspect | Assessment | Recommendation |
+|--------|------------|---------------|
+| `BlockInfo` structure | Supports future UX features | Approved |
+| Immutability | Appropriate for chat paradigm | Approved |
+| Block ID format | UUID not user-friendly for display | Add `sequence: int` field |
+| Timestamp | Enables time-based UX features | Add `relative_timestamp` property |
+| Navigation support | Needs efficient sequence access | Add `get_block_at_index(index)` |
+
+**Future Feature Support:**
+
+| Feature | UX Requirement | Design Support |
+|---------|----------------|----------------|
+| Block navigation (Alt+Up/Down) | Display "Block X of Y" | `sequence` field + `block_count` |
+| Block selection | Visual highlight + copy | `get_block()` + content field |
+| Block pruning | Loading indicator | Immutable + persistence |
+| Session resumption | Timestamp ordering | `timestamp` field |
+| Relative timestamps | "2 min ago" display | `relative_timestamp` property |
+
+**UX Recommendations Implemented:**
+
+1. **Display-friendly sequence number** - Added `sequence: int` field to BlockInfo for user-facing navigation displays
+2. **Human-readable timestamps** - Added `relative_timestamp` property requirement
+3. **Efficient navigation** - Added `get_block_at_index(index)` for O(1) sequence-based navigation
+
+**Status:** Approved with recommendations integrated into task acceptance criteria.
+
+---
+
+## 18. Summary
 
 This UI/UX analysis provides a comprehensive design foundation for clitic. Key recommendations:
 
