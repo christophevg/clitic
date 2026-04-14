@@ -1,5 +1,6 @@
 """Tests for InputBar widget."""
 
+import pytest
 from unittest.mock import patch
 
 from textual.events import Key
@@ -948,3 +949,275 @@ class TestInputBarSubmitConfiguration:
 
     submit_messages = [m for m in posted_messages if isinstance(m, InputBar.Submit)]
     assert len(submit_messages) == 0
+
+
+class TestInputBarNewlineInsertion:
+  """Tests for newline insertion functionality."""
+
+  def test_action_insert_newline_inserts_newline(self) -> None:
+    """action_insert_newline() inserts a newline character."""
+    input_bar = InputBar(text="hello world")
+    input_bar.cursor_location = (0, 5)
+    input_bar.action_insert_newline()
+    assert "\n" in input_bar.text
+    assert input_bar.text == "hello\n world"
+
+  def test_action_insert_newline_at_cursor_position(self) -> None:
+    """Newline is inserted at cursor position, not end."""
+    input_bar = InputBar(text="line one")
+    input_bar.cursor_location = (0, 4)  # After "line"
+    input_bar.action_insert_newline()
+    assert input_bar.text == "line\n one"
+
+  def test_action_insert_newline_moves_cursor(self) -> None:
+    """Cursor moves to start of next line after newline."""
+    input_bar = InputBar(text="hello world")
+    input_bar.cursor_location = (0, 5)
+    input_bar.action_insert_newline()
+    assert input_bar.cursor_location == (1, 0)
+
+  def test_action_insert_newline_at_line_start(self) -> None:
+    """Newline at position 0 creates empty first line."""
+    input_bar = InputBar(text="hello world")
+    input_bar.cursor_location = (0, 0)
+    input_bar.action_insert_newline()
+    assert input_bar.text == "\nhello world"
+    assert input_bar.cursor_location == (1, 0)
+
+  def test_action_insert_newline_at_line_end(self) -> None:
+    """Newline at end of line creates empty next line."""
+    input_bar = InputBar(text="hello")
+    input_bar.cursor_location = (0, 5)
+    input_bar.action_insert_newline()
+    assert input_bar.text == "hello\n"
+    assert input_bar.cursor_location == (1, 0)
+
+  def test_action_insert_newline_in_middle_of_line(self) -> None:
+    """Newline in middle of line splits the line."""
+    input_bar = InputBar(text="hello world")
+    input_bar.cursor_location = (0, 5)
+    input_bar.action_insert_newline()
+    assert input_bar.text == "hello\n world"
+    assert input_bar.cursor_location == (1, 0)
+
+  def test_action_insert_newline_with_existing_multiline(self) -> None:
+    """Newline insertion works with existing multiline text."""
+    input_bar = InputBar(text="line one\nline two")
+    input_bar.cursor_location = (1, 4)  # After "line" on second line
+    input_bar.action_insert_newline()
+    assert input_bar.text == "line one\nline\n two"
+    assert input_bar.cursor_location == (2, 0)
+
+  def test_cursor_after_multiple_newlines(self) -> None:
+    """Cursor position is correct after multiple newlines."""
+    input_bar = InputBar(text="abc")
+    input_bar.cursor_location = (0, 1)
+    input_bar.action_insert_newline()
+    assert input_bar.cursor_location == (1, 0)
+    input_bar.action_insert_newline()
+    assert input_bar.cursor_location == (2, 0)
+    assert input_bar.text == "a\n\nbc"
+
+
+@pytest.mark.asyncio
+class TestInputBarNewlineInsertionAsync:
+  """Async tests for newline insertion with mounted InputBar."""
+
+  async def test_shift_enter_inserts_newline_default(self) -> None:
+    """Shift+Enter inserts newline in default mode (submit_on_enter=True)."""
+    from textual.app import App, ComposeResult
+
+    class TestApp(App):
+      def compose(self) -> ComposeResult:
+        yield InputBar()
+
+    async with TestApp().run_test() as pilot:
+      input_bar = pilot.app.query_one(InputBar)
+      input_bar.text = "hello world"
+      input_bar.cursor_location = (0, 5)
+
+      await pilot.press("shift+enter")
+
+      assert "\n" in input_bar.text
+      assert input_bar.text == "hello\n world"
+      assert input_bar.cursor_location == (1, 0)
+
+  async def test_shift_enter_with_existing_text(self) -> None:
+    """Shift+Enter inserts newline with existing multiline text."""
+    from textual.app import App, ComposeResult
+
+    class TestApp(App):
+      def compose(self) -> ComposeResult:
+        yield InputBar()
+
+    async with TestApp().run_test() as pilot:
+      input_bar = pilot.app.query_one(InputBar)
+      input_bar.text = "line one\nline two"
+      input_bar.cursor_location = (0, 4)  # After "line" on first line
+
+      await pilot.press("shift+enter")
+
+      assert input_bar.text == "line\n one\nline two"
+      assert input_bar.cursor_location == (1, 0)
+
+  async def test_shift_enter_at_line_start(self) -> None:
+    """Shift+Enter at position 0 creates empty first line."""
+    from textual.app import App, ComposeResult
+
+    class TestApp(App):
+      def compose(self) -> ComposeResult:
+        yield InputBar()
+
+    async with TestApp().run_test() as pilot:
+      input_bar = pilot.app.query_one(InputBar)
+      input_bar.text = "hello world"
+      input_bar.cursor_location = (0, 0)
+
+      await pilot.press("shift+enter")
+
+      assert input_bar.text == "\nhello world"
+      assert input_bar.cursor_location == (1, 0)
+
+  async def test_shift_enter_at_line_end(self) -> None:
+    """Shift+Enter at end of line creates empty next line."""
+    from textual.app import App, ComposeResult
+
+    class TestApp(App):
+      def compose(self) -> ComposeResult:
+        yield InputBar()
+
+    async with TestApp().run_test() as pilot:
+      input_bar = pilot.app.query_one(InputBar)
+      input_bar.text = "hello"
+      input_bar.cursor_location = (0, 5)
+
+      await pilot.press("shift+enter")
+
+      assert input_bar.text == "hello\n"
+      assert input_bar.cursor_location == (1, 0)
+
+  async def test_shift_enter_in_middle_of_line(self) -> None:
+    """Shift+Enter in middle of line splits the line."""
+    from textual.app import App, ComposeResult
+
+    class TestApp(App):
+      def compose(self) -> ComposeResult:
+        yield InputBar()
+
+    async with TestApp().run_test() as pilot:
+      input_bar = pilot.app.query_one(InputBar)
+      input_bar.text = "hello world"
+      input_bar.cursor_location = (0, 5)
+
+      await pilot.press("shift+enter")
+
+      assert input_bar.text == "hello\n world"
+      assert input_bar.cursor_location == (1, 0)
+
+  async def test_enter_inserts_newline_alt_mode(self) -> None:
+    """Enter inserts newline when submit_on_enter=False."""
+    from textual.app import App, ComposeResult
+
+    class TestApp(App):
+      def compose(self) -> ComposeResult:
+        yield InputBar(submit_on_enter=False)
+
+    async with TestApp().run_test() as pilot:
+      input_bar = pilot.app.query_one(InputBar)
+      input_bar.text = "hello world"
+      input_bar.cursor_location = (0, 5)
+
+      await pilot.press("enter")
+
+      assert "\n" in input_bar.text
+      assert input_bar.text == "hello\n world"
+      assert input_bar.cursor_location == (1, 0)
+
+  async def test_shift_enter_submits_alt_mode(self) -> None:
+    """Shift+Enter submits when submit_on_enter=False."""
+    from textual.app import App, ComposeResult
+
+    class TestApp(App):
+      def compose(self) -> ComposeResult:
+        yield InputBar(submit_on_enter=False)
+
+    async with TestApp().run_test() as pilot:
+      input_bar = pilot.app.query_one(InputBar)
+      input_bar.text = "test message"
+
+      await pilot.press("shift+enter")
+
+      # Text should be cleared after submit
+      assert input_bar.text == ""
+
+  async def test_cursor_after_newline_at_start(self) -> None:
+    """Cursor is at start of new line after newline at position 0."""
+    from textual.app import App, ComposeResult
+
+    class TestApp(App):
+      def compose(self) -> ComposeResult:
+        yield InputBar()
+
+    async with TestApp().run_test() as pilot:
+      input_bar = pilot.app.query_one(InputBar)
+      input_bar.text = "hello"
+      input_bar.cursor_location = (0, 0)
+
+      await pilot.press("shift+enter")
+
+      assert input_bar.cursor_location == (1, 0)
+
+  async def test_cursor_after_newline_at_middle(self) -> None:
+    """Cursor is at start of new line after newline in middle."""
+    from textual.app import App, ComposeResult
+
+    class TestApp(App):
+      def compose(self) -> ComposeResult:
+        yield InputBar()
+
+    async with TestApp().run_test() as pilot:
+      input_bar = pilot.app.query_one(InputBar)
+      input_bar.text = "hello world"
+      input_bar.cursor_location = (0, 5)
+
+      await pilot.press("shift+enter")
+
+      assert input_bar.cursor_location == (1, 0)
+
+  async def test_cursor_after_newline_at_end(self) -> None:
+    """Cursor is at start of new empty line after newline at end."""
+    from textual.app import App, ComposeResult
+
+    class TestApp(App):
+      def compose(self) -> ComposeResult:
+        yield InputBar()
+
+    async with TestApp().run_test() as pilot:
+      input_bar = pilot.app.query_one(InputBar)
+      input_bar.text = "hello"
+      input_bar.cursor_location = (0, 5)
+
+      await pilot.press("shift+enter")
+
+      assert input_bar.cursor_location == (1, 0)
+
+  async def test_cursor_after_multiple_newlines(self) -> None:
+    """Cursor position is correct after multiple newlines."""
+    from textual.app import App, ComposeResult
+
+    class TestApp(App):
+      def compose(self) -> ComposeResult:
+        yield InputBar()
+
+    async with TestApp().run_test() as pilot:
+      input_bar = pilot.app.query_one(InputBar)
+      input_bar.text = "abc"
+      input_bar.cursor_location = (0, 1)
+
+      await pilot.press("shift+enter")
+      assert input_bar.cursor_location == (1, 0)
+
+      await pilot.press("shift+enter")
+      assert input_bar.cursor_location == (2, 0)
+
+      assert input_bar.text == "a\n\nbc"

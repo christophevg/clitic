@@ -19,14 +19,15 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P1
   - **Completed:** 2026-04-14
 
-- [ ] **test-inputbar-newline** (Priority: 9/10 - Critical)
+- [x] **test-inputbar-newline** (Priority: 9/10 - Critical)
   - Add InputBar newline insertion integration tests
   - **Acceptance Criteria:**
-    - [ ] Tests for `action_insert_newline` method
-    - [ ] Verify actual newline insertion (not just mocked `post_message`)
-    - [ ] Tests for Shift+Enter behavior
+    - [x] Tests for `action_insert_newline` method
+    - [x] Verify actual newline insertion (not just mocked `post_message`)
+    - [x] Tests for Shift+Enter behavior
   - **Dependencies:** test-conftest-py
   - **Priority:** P1
+  - **Completed:** 2026-04-14
 
 - [ ] **test-app-plugin-integration** (Priority: 9/10 - Critical)
   - Add App plugin integration tests with render cycle
@@ -634,6 +635,17 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
 
 ## Done
+
+- [x] **test-inputbar-newline**
+  - Added InputBar newline insertion integration tests
+  - Created `TestInputBarNewlineInsertion` class with 8 unit tests for `action_insert_newline()` method
+  - Created `TestInputBarNewlineInsertionAsync` class with 12 async integration tests
+  - Tests verify actual text content changes (not mocked `post_message`)
+  - Tests verify cursor position after newline insertion
+  - Tests cover both `submit_on_enter=True` and `submit_on_enter=False` modes
+  - Tests cover edge cases: newline at start, middle, end, multiple newlines, existing multiline text
+  - All reviews passed (functional, UX, code, testing)
+  - Total: 123 tests passing (20 new tests)
 
 - [x] **conversation-session-persistence**
   - Added session persistence with JSONL storage
