@@ -2,6 +2,113 @@
 
 ## Backlog
 
+### Testing Coverage Improvements
+
+These tasks address gaps identified by the testing-engineer review (see `docs/development/test-coverage-review.md`).
+
+**Priority order (blocked tasks depend on conftest.py):**
+
+- [x] **test-conftest-py** (Priority: First - foundation)
+  - Add `tests/conftest.py` for shared fixtures
+  - **Acceptance Criteria:**
+    - [x] Mock Textual app instances fixture
+    - [x] Temp session directories fixture
+    - [x] Sample BlockInfo/Conversation fixtures
+    - [x] Common test utilities
+  - **Dependencies:** None
+  - **Priority:** P1
+  - **Completed:** 2026-04-14
+
+- [ ] **test-inputbar-newline** (Priority: 9/10 - Critical)
+  - Add InputBar newline insertion integration tests
+  - **Acceptance Criteria:**
+    - [ ] Tests for `action_insert_newline` method
+    - [ ] Verify actual newline insertion (not just mocked `post_message`)
+    - [ ] Tests for Shift+Enter behavior
+  - **Dependencies:** test-conftest-py
+  - **Priority:** P1
+
+- [ ] **test-app-plugin-integration** (Priority: 9/10 - Critical)
+  - Add App plugin integration tests with render cycle
+  - **Acceptance Criteria:**
+    - [ ] Integration tests for ContentPlugin in actual Textual app context
+    - [ ] Tests for complete cycle: InputBar -> submit -> handler -> Conversation -> display
+    - [ ] Plugin lifecycle tests within app
+  - **Dependencies:** test-conftest-py
+  - **Priority:** P1
+
+- [ ] **test-conversation-resize-scroll** (Priority: 8/10 - Critical)
+  - Add Conversation resize/scroll integration tests
+  - **Acceptance Criteria:**
+    - [ ] Integration tests for resize -> scroll position -> auto_scroll -> CSS class cycle
+    - [ ] Tests for `_update_auto_scroll_from_scroll_position`
+  - **Dependencies:** test-conftest-py
+  - **Priority:** P1
+
+- [ ] **test-session-concurrency** (Priority: 7/10 - Important)
+  - Add session persistence concurrent access tests
+  - **Acceptance Criteria:**
+    - [ ] Tests for multiple simultaneous `save_block` calls
+    - [ ] Tests for file locking/corruption scenarios
+    - [ ] Tests for large session files (>100MB)
+  - **Dependencies:** test-conftest-py
+  **Priority:** P2
+
+- [ ] **test-pruning-edge-cases** (Priority: 7/10 - Important)
+  - Add Conversation memory pruning edge case tests
+  - **Acceptance Criteria:**
+    - [ ] Tests for `_restore_pruned_blocks` with stale data
+    - [ ] Tests for deleted/corrupted session files after pruning
+    - [ ] Tests for multiple Conversation instances with same session id
+  - **Dependencies:** test-conftest-py
+  - **Priority:** P2
+
+- [ ] **test-inputbar-theme-language** (Priority: 6/10 - Important)
+  - Add InputBar theme and language parameter tests
+  - **Acceptance Criteria:**
+    - [ ] Tests for syntax highlighting with different languages
+    - [ ] Tests for theme parameter behavior
+    - [ ] Tests for language switching
+  - **Dependencies:** test-conftest-py
+  - **Priority:** P2
+
+- [ ] **test-app-theme-css** (Priority: 6/10 - Important)
+  - Add App theme loading and CSS path tests
+  - **Acceptance Criteria:**
+    - [ ] Tests for CSS_PATH loading
+    - [ ] Tests for theme integration
+    - [ ] Tests for `_theme_name` property with TCSS files
+  - **Dependencies:** test-conftest-py
+  - **Priority:** P2
+
+- [ ] **test-conversation-render-errors** (Priority: 6/10 - Important)
+  - Add Conversation render_line error handling tests
+  - **Acceptance Criteria:**
+    - [ ] Tests for invalid block data in `_blocks` list
+    - [ ] Tests for corrupted `_strips` list
+    - [ ] Tests for width changes during rendering
+  - **Dependencies:** test-conftest-py
+  - **Priority:** P2
+
+- [ ] **test-cli-arguments** (Priority: 4/10 - Lower)
+  - Add CLI argument tests for `__main__.py`
+  - **Acceptance Criteria:**
+    - [ ] Tests for `--resume` functionality
+    - [ ] Tests for `--list-sessions` output
+    - [ ] Tests for `--persistence` flag
+    - [ ] Tests for argument parsing
+  - **Dependencies:** None
+  - **Priority:** P3
+
+- [ ] **test-blockinfo-timestamps** (Priority: 4/10 - Lower)
+  - Add BlockInfo timestamp edge case tests
+  - **Acceptance Criteria:**
+    - [ ] Tests for negative time deltas (future timestamps)
+    - [ ] Tests for very large time deltas (years)
+    - [ ] Tests for timezone-naive vs timezone-aware comparisons
+  - **Dependencies:** None
+  - **Priority:** P3
+
 ### Phase 2: InputBar Widget (P1 - Essential)
 
 - [x] **inputbar-basic**
