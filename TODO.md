@@ -29,14 +29,15 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P1
   - **Completed:** 2026-04-14
 
-- [ ] **test-app-plugin-integration** (Priority: 9/10 - Critical)
+- [x] **test-app-plugin-integration** (Priority: 9/10 - Critical)
   - Add App plugin integration tests with render cycle
   - **Acceptance Criteria:**
-    - [ ] Integration tests for ContentPlugin in actual Textual app context
-    - [ ] Tests for complete cycle: InputBar -> submit -> handler -> Conversation -> display
-    - [ ] Plugin lifecycle tests within app
+    - [x] Integration tests for ContentPlugin in actual Textual app context
+    - [x] Tests for complete cycle: InputBar -> submit -> handler -> Conversation -> display
+    - [x] Plugin lifecycle tests within app
   - **Dependencies:** test-conftest-py
   - **Priority:** P1
+  - **Completed:** 2026-04-14
 
 - [ ] **test-conversation-resize-scroll** (Priority: 8/10 - Critical)
   - Add Conversation resize/scroll integration tests
@@ -635,6 +636,19 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
 
 ## Done
+
+- [x] **test-app-plugin-integration**
+  - Added App plugin integration tests with render cycle
+  - Created `TestPluginLifecycleIntegration` class with 7 tests for plugin registration/unregistration in running app
+  - Created `TestSubmitFlowIntegration` class with 8 tests for InputBar.Submit → handler → Conversation flow
+  - Created `TestPluginAppIntegration` class with 5 tests for plugin interaction with app components
+  - Created `TestSubmitFlowEdgeCases` class with 5 tests for edge cases in submit flow
+  - Created `TestPluginEdgeCases` class with 4 tests for edge cases in plugin management
+  - Tests use async Textual app context via `run_test()` pilot pattern
+  - Tests verify plugin lifecycle hooks (on_register/on_unregister)
+  - Tests verify complete submit flow with InputBar focus handling
+  - All reviews passed (functional, code, testing)
+  - Total: 454 tests passing (29 new tests)
 
 - [x] **test-inputbar-newline**
   - Added InputBar newline insertion integration tests
