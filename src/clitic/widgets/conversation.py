@@ -11,7 +11,8 @@ import uuid
 from bisect import bisect_right
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
 from rich.segment import Segment as RichSegment
@@ -22,6 +23,9 @@ from textual.geometry import Size
 from textual.reactive import reactive
 from textual.scroll_view import ScrollView
 from textual.strip import Strip
+
+if TYPE_CHECKING:
+  from clitic.session import SessionManager
 
 _DEFAULT_WIDTH: int = 80
 
@@ -136,6 +140,8 @@ class Conversation(ScrollView):
     *,
     session_uuid: str | None = None,
     auto_scroll: bool = True,
+    persistence_enabled: bool = False,
+    session_dir: Path | None = None,
     name: str | None = None,
     id: str | None = None,  # noqa: A002
     classes: str | None = None,
@@ -147,6 +153,8 @@ class Conversation(ScrollView):
         session_uuid: Optional UUID for the session. If not provided,
             a new UUID will be generated.
         auto_scroll: Whether to automatically scroll to new content.
+        persistence_enabled: Whether to enable session persistence.
+        session_dir: Optional session directory for persistence.
         name: Name of the widget.
         id: ID of the widget.
         classes: Space-separated CSS classes.
@@ -160,8 +168,19 @@ class Conversation(ScrollView):
     self._cumulative_heights: list[int] = []  # Running total of lines per block
     self._total_lines: int = 0
     self._last_width: int = 0
+    self._session_manager: SessionManager | None = None
     super().__init__(name=name, id=id, classes=classes, disabled=disabled)
     self.auto_scroll = auto_scroll
+
+    # Initialize session manager if persistence is enabled
+    if persistence_enabled:
+      from clitic.session import SessionManager
+
+      self._session_manager = SessionManager(
+        persistence_enabled=True,
+        session_dir=session_dir,
+      )
+      self._session_manager.start_session(self._session_uuid)
 
   @property
   def session_id(self) -> str:
@@ -368,6 +387,10 @@ class Conversation(ScrollView):
     block = _BlockData(info=info)
     self._blocks.append(block)
 
+    # Save block to session file if persistence is enabled
+    if self._session_manager is not None:
+      self._session_manager.save_block(info)
+
     # Update the block index for O(1) lookup
     self._block_index[block_id] = len(self._blocks) - 1
 
@@ -494,3 +517,55 @@ class Conversation(ScrollView):
   def action_scroll_end(self) -> None:
     """Scroll to the end of the conversation."""
     self.scroll_end()
+
+  @classmethod
+  def resume(
+    cls,
+    session_id: str,
+    session_dir: Path | None = None,
+    **kwargs: Any,
+  ) -> Conversation:
+    """Resume a conversation from a saved session.
+
+    Args:
+        session_id: The session ID to resume.
+        session_dir: Optional session directory override.
+        **kwargs: Additional arguments passed to Conversation constructor.
+
+    Returns:
+        A Conversation instance with restored blocks.
+
+    Raises:
+        SessionError: If session file not found or invalid.
+    """
+    from clitic.session import SessionManager
+
+    manager = SessionManager(session_dir=session_dir)
+    blocks = manager.resume_session(session_id)
+
+    # Create conversation with the resumed session UUID
+    conversation = cls(session_uuid=session_id, **kwargs)
+
+    # Restore sequence counter from last block
+    conversation._sequence_counter = max(b.sequence for b in blocks) + 1 if blocks else 0
+
+    # Restore blocks (using internal append to avoid triggering persistence)
+    for block_info in blocks:
+      # Create _BlockData directly
+      block = _BlockData(info=block_info)
+      conversation._blocks.append(block)
+      conversation._block_index[block_info.block_id] = len(conversation._blocks) - 1
+
+    # Render all blocks for display
+    if blocks:
+      conversation._rerender_all_blocks()
+
+    return conversation
+
+  def get_session_manager(self) -> SessionManager | None:
+    """Get the session manager, if persistence is enabled.
+
+    Returns:
+        The SessionManager if persistence is enabled, None otherwise.
+    """
+    return self._session_manager

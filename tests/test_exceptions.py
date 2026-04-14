@@ -7,6 +7,7 @@ from clitic.exceptions import (
   ConfigurationError,
   PluginError,
   RenderError,
+  SessionError,
 )
 
 
@@ -232,6 +233,78 @@ class TestRenderError:
     assert error._message is None
 
 
+class TestSessionError:
+  """Tests for SessionError exception."""
+
+  def test_is_clitic_error(self) -> None:
+    """SessionError should inherit from CliticError."""
+    assert issubclass(SessionError, CliticError)
+
+  def test_can_be_raised(self) -> None:
+    """SessionError can be raised with required attributes."""
+    with pytest.raises(SessionError):
+      raise SessionError(operation="save")
+
+  def test_can_be_caught_as_clitic_error(self) -> None:
+    """SessionError can be caught as CliticError."""
+    with pytest.raises(CliticError):
+      raise SessionError(operation="save")
+
+  def test_attributes_set(self) -> None:
+    """SessionError sets attributes correctly."""
+    error = SessionError(
+      session_id="test-session-123",
+      operation="resume",
+      message="File not found",
+    )
+    assert error.session_id == "test-session-123"
+    assert error.operation == "resume"
+
+  def test_str_without_session_id(self) -> None:
+    """SessionError formats message without session_id."""
+    error = SessionError(operation="delete")
+    assert str(error) == "Session error during delete."
+
+  def test_str_with_session_id(self) -> None:
+    """SessionError formats message with session_id."""
+    error = SessionError(
+      session_id="abc-123",
+      operation="save",
+    )
+    assert str(error) == "Session error during save for session 'abc-123'."
+
+  def test_str_with_message(self) -> None:
+    """SessionError formats message with additional context."""
+    error = SessionError(
+      session_id="abc-123",
+      operation="save",
+      message="disk full",
+    )
+    assert str(error) == "Session error during save for session 'abc-123': disk full"
+
+  def test_repr_contains_all_info(self) -> None:
+    """SessionError repr contains all relevant information."""
+    error = SessionError(
+      session_id="test",
+      operation="save",
+      message="test message",
+    )
+    repr_str = repr(error)
+    assert "SessionError" in repr_str
+    assert "test" in repr_str
+    assert "save" in repr_str
+
+  def test_session_id_default_none(self) -> None:
+    """SessionError session_id defaults to None."""
+    error = SessionError(operation="start")
+    assert error.session_id is None
+
+  def test_message_default_none(self) -> None:
+    """SessionError message defaults to None."""
+    error = SessionError(operation="start")
+    assert error._message is None
+
+
 class TestExceptionHierarchy:
   """Tests for exception hierarchy relationships."""
 
@@ -253,12 +326,19 @@ class TestExceptionHierarchy:
     assert isinstance(error, CliticError)
     assert isinstance(error, Exception)
 
+  def test_session_error_is_instance_of_clitic_error(self) -> None:
+    """SessionError instance should be instance of CliticError."""
+    error = SessionError(operation="test")
+    assert isinstance(error, CliticError)
+    assert isinstance(error, Exception)
+
   def test_catching_clitic_error_catches_all(self) -> None:
     """Catching CliticError should catch all specific errors."""
     errors_to_raise = [
       PluginError(plugin_name="Test", operation="load"),
       ConfigurationError(setting="test"),
       RenderError(content_type="test", renderer="Test"),
+      SessionError(operation="save"),
     ]
 
     for error in errors_to_raise:
@@ -309,6 +389,20 @@ class TestExceptionScenarios:
     assert "diff" in str(error)
     assert "DiffRenderer" in str(error)
     assert "Binary files" in str(error)
+
+  def test_session_not_found_scenario(self) -> None:
+    """Simulate a session not found error."""
+    with pytest.raises(SessionError) as exc_info:
+      raise SessionError(
+        session_id="abc-123-def",
+        operation="resume",
+        message="Session file not found",
+      )
+
+    error = exc_info.value
+    assert "abc-123-def" in str(error)
+    assert "resume" in str(error)
+    assert "not found" in str(error)
 
   def test_catching_specific_vs_base_error(self) -> None:
     """Test catching specific vs base error types."""

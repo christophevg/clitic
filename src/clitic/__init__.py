@@ -9,6 +9,7 @@ from clitic.exceptions import (
   ConfigurationError,
   PluginError,
   RenderError,
+  SessionError,
 )
 from clitic.plugins import (
   ContentPlugin,
@@ -16,6 +17,7 @@ from clitic.plugins import (
   ModeProvider,
   Renderable,
 )
+from clitic.session import SessionInfo, SessionManager
 from clitic.widgets import Conversation, InputBar
 from clitic.widgets.conversation import BlockInfo
 
@@ -30,6 +32,7 @@ __all__ = [
   "ConfigurationError",
   "PluginError",
   "RenderError",
+  "SessionError",
   # Plugin base classes
   "ContentPlugin",
   "Highlighter",
@@ -38,6 +41,9 @@ __all__ = [
   # Completion base classes
   "Completion",
   "CompletionProvider",
+  # Session management
+  "SessionInfo",
+  "SessionManager",
   # Widgets
   "BlockInfo",
   "Conversation",

@@ -12,6 +12,7 @@ Run with:
 
 from __future__ import annotations
 
+import argparse
 from typing import TYPE_CHECKING
 
 from textual.app import ComposeResult
@@ -62,15 +63,23 @@ class ShowcaseApp(App):
   }
   """
 
-  def __init__(self) -> None:
-    """Initialize the showcase app."""
+  def __init__(self, conversation: Conversation | None = None) -> None:
+    """Initialize the showcase app.
+
+    Args:
+        conversation: Optional pre-configured Conversation widget.
+    """
     super().__init__(title=f"clitic v{__version__} Showcase")
     self._message_count = 0
+    self._conversation = conversation
 
   def compose(self) -> ComposeResult:
     """Compose the app layout."""
     yield Header()
-    yield Conversation(id="messages")
+    if self._conversation is not None:
+      yield self._conversation
+    else:
+      yield Conversation(id="messages")
     # Note: Use submit_on_enter=False to make Shift+Enter submit and Enter insert newline
     yield InputBar(placeholder="Type your message here...", theme="github_light")
     yield Footer()
@@ -136,7 +145,50 @@ class ShowcaseApp(App):
 
 def main() -> None:
   """Run the clitic showcase application."""
-  app = ShowcaseApp()
+  parser = argparse.ArgumentParser(
+    description="clitic - Interactive TUI showcase",
+  )
+  parser.add_argument(
+    "--resume",
+    metavar="SESSION_ID",
+    help="Resume a previous session by session ID",
+  )
+  parser.add_argument(
+    "--list-sessions",
+    action="store_true",
+    help="List available sessions",
+  )
+  parser.add_argument(
+    "--persistence",
+    action="store_true",
+    help="Enable session persistence",
+  )
+
+  args = parser.parse_args()
+
+  # Handle --list-sessions
+  if args.list_sessions:
+    from clitic.session import SessionManager
+
+    manager = SessionManager()
+    sessions = manager.list_sessions()
+    if not sessions:
+      print("No sessions found.")
+    else:
+      for session in sessions:
+        print(
+          f"{session.session_id[:8]}... "
+          f"({session.block_count} blocks, {session.updated_at})"
+        )
+    return
+
+  # Create conversation
+  if args.resume:
+    conversation = Conversation.resume(args.resume)
+  else:
+    conversation = Conversation(persistence_enabled=args.persistence)
+
+  app = ShowcaseApp(conversation=conversation)
   app.run()
 
 

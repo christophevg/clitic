@@ -80,15 +80,15 @@
   - **Priority:** P1
 
 
-- [ ] **conversation-session-persistence**
+- [x] **conversation-session-persistence**
   - Add session persistence with JSONL storage (FR-007)
   - **Acceptance Criteria:**
-    - [ ] `SessionManager` class with `persistence_enabled: bool` parameter
-    - [ ] When enabled, every append writes to JSONL file atomically
-    - [ ] Configurable file path (default: `~/.local/share/clitic/sessions/{session_uuid}.jsonl`)
-    - [ ] `resume_session(session_id)` loads previous session from file
-    - [ ] `list_sessions()` returns available sessions
-    - [ ] Showcase demonstrates `--resume session_id` CLI flag
+    - [x] `SessionManager` class with `persistence_enabled: bool` parameter
+    - [x] When enabled, every append writes to JSONL file atomically
+    - [x] Configurable file path (default: `~/.local/share/clitic/sessions/{session_uuid}.jsonl`)
+    - [x] `resume_session(session_id)` loads previous session from file
+    - [x] `list_sessions()` returns available sessions
+    - [x] Showcase demonstrates `--resume session_id` CLI flag
   - **Dependencies:** conversation-block-model
   - **Priority:** P1
 
@@ -527,6 +527,24 @@
   - **Priority:** P2
 
 ## Done
+
+- [x] **conversation-session-persistence**
+  - Added session persistence with JSONL storage
+  - Created `SessionManager` class with `persistence_enabled` parameter
+  - Created `SessionInfo` frozen dataclass for session metadata
+  - Added `SessionError` exception to exceptions hierarchy
+  - Default session dir: `~/.local/share/clitic/sessions/{session_uuid}.jsonl`
+  - `start_session(session_id)` creates directory and opens file
+  - `save_block(block)` writes to JSONL with immediate flush/fsync
+  - `resume_session(session_id)` loads blocks from file
+  - `list_sessions()` returns available sessions sorted by updated_at
+  - `delete_session(session_id)` removes session file
+  - Integrated with Conversation widget via `persistence_enabled` and `session_dir` parameters
+  - Added `Conversation.resume(session_id)` classmethod for session restoration
+  - Added `get_session_manager()` method to Conversation
+  - Added CLI arguments to showcase: `--resume`, `--list-sessions`, `--persistence`
+  - 34 new tests for session management
+  - Total: 377 tests passing
 
 - [x] **conversation-block-model**
   - Refined block data model with ID, metadata, and timestamp

@@ -177,3 +177,55 @@ class RenderError(CliticError):
       f"RenderError(content_type={self.content_type!r}, "
       f"renderer={self.renderer!r}, message={self._message!r})"
     )
+
+
+class SessionError(CliticError):
+  """Exception for session-related issues.
+
+  Raised when a session operation fails (start, save, resume, delete).
+
+  Attributes:
+      session_id: The session ID involved in the error (if applicable).
+      operation: The operation that failed (e.g., 'start', 'save', 'resume').
+
+  Example:
+      raise SessionError(
+          session_id="abc-123",
+          operation="resume",
+          message="Session file not found"
+      )
+  """
+
+  def __init__(
+    self,
+    session_id: str | None = None,
+    operation: str = "unknown",
+    message: str | None = None,
+  ) -> None:
+    """Initialize SessionError.
+
+    Args:
+        session_id: Optional session ID involved in the error.
+        operation: The operation that failed.
+        message: Optional additional context for the error.
+    """
+    self.session_id = session_id
+    self.operation = operation
+    self._message = message
+    super().__init__(str(self))
+
+  def __str__(self) -> str:
+    """Format the error message with session context."""
+    base = f"Session error during {self.operation}"
+    if self.session_id:
+      base = f"{base} for session '{self.session_id}'"
+    if self._message:
+      return f"{base}: {self._message}"
+    return f"{base}."
+
+  def __repr__(self) -> str:
+    """Return a detailed representation for debugging."""
+    return (
+      f"SessionError(session_id={self.session_id!r}, "
+      f"operation={self.operation!r}, message={self._message!r})"
+    )
