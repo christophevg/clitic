@@ -358,3 +358,133 @@ class SessionManager:
         operation="delete",
         message=f"Failed to delete session file: {e}",
       ) from e
+
+  def load_block_by_sequence(self, session_id: str, sequence: int) -> BlockInfo | None:
+    """Load a single block by its sequence number.
+
+    Scans the session file for a block with the matching sequence number.
+    This is used for lazy loading of pruned blocks.
+
+    Args:
+        session_id: The session ID to load from.
+        sequence: The sequence number of the block to load.
+
+    Returns:
+        BlockInfo if found, None otherwise.
+
+    Raises:
+        SessionError: If session file not found or invalid.
+    """
+    file_path = self._get_session_file_path(session_id)
+
+    if not file_path.exists():
+      raise SessionError(
+        session_id=session_id,
+        operation="load_block",
+        message="Session file not found",
+      )
+
+    try:
+      with open(file_path, encoding="utf-8") as f:
+        for line in f:
+          line = line.strip()
+          if not line:
+            continue
+
+          try:
+            data = json.loads(line)
+            if data.get("sequence") == sequence:
+              # Found the block
+              timestamp = datetime.fromisoformat(data["timestamp"])
+              if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
+
+              return BlockInfo(
+                block_id=data["block_id"],
+                role=data["role"],
+                content=data["content"],
+                metadata=data.get("metadata", {}),
+                timestamp=timestamp,
+                sequence=data["sequence"],
+              )
+          except (json.JSONDecodeError, KeyError, ValueError):
+            # Skip malformed lines but continue searching
+            continue
+
+      return None
+
+    except OSError as e:
+      raise SessionError(
+        session_id=session_id,
+        operation="load_block",
+        message=f"Failed to read session file: {e}",
+      ) from e
+
+  def load_blocks_by_sequence_range(
+    self, session_id: str, start: int, end: int
+  ) -> list[BlockInfo]:
+    """Load blocks within a sequence range.
+
+    Loads all blocks with sequence numbers in the range [start, end].
+    This is used for restoring pruned blocks.
+
+    Args:
+        session_id: The session ID to load from.
+        start: The starting sequence number (inclusive).
+        end: The ending sequence number (inclusive).
+
+    Returns:
+        List of BlockInfo objects sorted by sequence number.
+
+    Raises:
+        SessionError: If session file not found or invalid.
+    """
+    file_path = self._get_session_file_path(session_id)
+
+    if not file_path.exists():
+      raise SessionError(
+        session_id=session_id,
+        operation="load_blocks",
+        message="Session file not found",
+      )
+
+    blocks: list[BlockInfo] = []
+
+    try:
+      with open(file_path, encoding="utf-8") as f:
+        for line in f:
+          line = line.strip()
+          if not line:
+            continue
+
+          try:
+            data = json.loads(line)
+            seq = data.get("sequence")
+            if seq is not None and start <= seq <= end:
+              timestamp = datetime.fromisoformat(data["timestamp"])
+              if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
+
+              block = BlockInfo(
+                block_id=data["block_id"],
+                role=data["role"],
+                content=data["content"],
+                metadata=data.get("metadata", {}),
+                timestamp=timestamp,
+                sequence=seq,
+              )
+              blocks.append(block)
+          except (json.JSONDecodeError, KeyError, ValueError):
+            # Skip malformed lines but continue parsing
+            continue
+
+    except OSError as e:
+      raise SessionError(
+        session_id=session_id,
+        operation="load_blocks",
+        message=f"Failed to read session file: {e}",
+      ) from e
+
+    # Sort by sequence number
+    blocks.sort(key=lambda b: b.sequence)
+    return blocks

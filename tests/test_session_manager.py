@@ -518,3 +518,173 @@ class TestConversationWithPersistence:
 
     # But blocks should still be added
     assert conversation.block_count == 1
+
+
+class TestSessionManagerLoadBlockBySequence:
+  """Tests for SessionManager load_block_by_sequence method."""
+
+  def test_load_block_by_sequence_returns_block(self, tmp_path: Path) -> None:
+    """load_block_by_sequence should return the correct block."""
+    manager = SessionManager(session_dir=tmp_path / "sessions")
+
+    # Create a session file
+    session_file = tmp_path / "sessions" / "test-session.jsonl"
+    session_file.parent.mkdir(parents=True, exist_ok=True)
+    session_file.write_text(
+      '{"block_id":"test-session-0","role":"user","content":"Hello","metadata":{},"timestamp":"2024-01-15T10:00:00+00:00","sequence":0}\n'
+      '{"block_id":"test-session-1","role":"assistant","content":"Hi","metadata":{},"timestamp":"2024-01-15T10:00:01+00:00","sequence":1}\n'
+    )
+
+    block = manager.load_block_by_sequence("test-session", 0)
+
+    assert block is not None
+    assert block.sequence == 0
+    assert block.content == "Hello"
+    assert block.role == "user"
+
+  def test_load_block_by_sequence_returns_none_for_missing(self, tmp_path: Path) -> None:
+    """load_block_by_sequence should return None for non-existent sequence."""
+    manager = SessionManager(session_dir=tmp_path / "sessions")
+
+    # Create a session file
+    session_file = tmp_path / "sessions" / "test-session.jsonl"
+    session_file.parent.mkdir(parents=True, exist_ok=True)
+    session_file.write_text(
+      '{"block_id":"test-session-0","role":"user","content":"Hello","metadata":{},"timestamp":"2024-01-15T10:00:00+00:00","sequence":0}\n'
+    )
+
+    block = manager.load_block_by_sequence("test-session", 99)
+
+    assert block is None
+
+  def test_load_block_by_sequence_raises_for_missing_file(self, tmp_path: Path) -> None:
+    """load_block_by_sequence should raise SessionError for missing file."""
+    manager = SessionManager(session_dir=tmp_path / "sessions")
+
+    try:
+      manager.load_block_by_sequence("non-existent-session", 0)
+      raise AssertionError("Should have raised SessionError")
+    except SessionError as e:
+      assert e.operation == "load_block"
+      assert "not found" in str(e).lower()
+
+  def test_load_block_by_sequence_skips_malformed_lines(self, tmp_path: Path) -> None:
+    """load_block_by_sequence should skip malformed lines."""
+    manager = SessionManager(session_dir=tmp_path / "sessions")
+
+    # Create a session file with malformed line
+    session_file = tmp_path / "sessions" / "test-session.jsonl"
+    session_file.parent.mkdir(parents=True, exist_ok=True)
+    session_file.write_text(
+      "malformed line\n"
+      '{"block_id":"test-session-1","role":"assistant","content":"Hi","metadata":{},"timestamp":"2024-01-15T10:00:01+00:00","sequence":1}\n'
+    )
+
+    block = manager.load_block_by_sequence("test-session", 1)
+
+    assert block is not None
+    assert block.sequence == 1
+
+
+class TestSessionManagerLoadBlocksBySequenceRange:
+  """Tests for SessionManager load_blocks_by_sequence_range method."""
+
+  def test_load_blocks_by_sequence_range_returns_blocks(self, tmp_path: Path) -> None:
+    """load_blocks_by_sequence_range should return blocks in range."""
+    manager = SessionManager(session_dir=tmp_path / "sessions")
+
+    # Create a session file
+    session_file = tmp_path / "sessions" / "test-session.jsonl"
+    session_file.parent.mkdir(parents=True, exist_ok=True)
+    session_file.write_text(
+      '{"block_id":"test-session-0","role":"user","content":"Zero","metadata":{},"timestamp":"2024-01-15T10:00:00+00:00","sequence":0}\n'
+      '{"block_id":"test-session-1","role":"assistant","content":"One","metadata":{},"timestamp":"2024-01-15T10:00:01+00:00","sequence":1}\n'
+      '{"block_id":"test-session-2","role":"user","content":"Two","metadata":{},"timestamp":"2024-01-15T10:00:02+00:00","sequence":2}\n'
+      '{"block_id":"test-session-3","role":"assistant","content":"Three","metadata":{},"timestamp":"2024-01-15T10:00:03+00:00","sequence":3}\n'
+    )
+
+    blocks = manager.load_blocks_by_sequence_range("test-session", 1, 2)
+
+    assert len(blocks) == 2
+    assert blocks[0].sequence == 1
+    assert blocks[1].sequence == 2
+
+  def test_load_blocks_by_sequence_range_returns_sorted(self, tmp_path: Path) -> None:
+    """load_blocks_by_sequence_range should return sorted blocks."""
+    manager = SessionManager(session_dir=tmp_path / "sessions")
+
+    # Create a session file with blocks out of order
+    session_file = tmp_path / "sessions" / "test-session.jsonl"
+    session_file.parent.mkdir(parents=True, exist_ok=True)
+    session_file.write_text(
+      '{"block_id":"test-session-2","role":"user","content":"Two","metadata":{},"timestamp":"2024-01-15T10:00:02+00:00","sequence":2}\n'
+      '{"block_id":"test-session-0","role":"user","content":"Zero","metadata":{},"timestamp":"2024-01-15T10:00:00+00:00","sequence":0}\n'
+      '{"block_id":"test-session-1","role":"assistant","content":"One","metadata":{},"timestamp":"2024-01-15T10:00:01+00:00","sequence":1}\n'
+    )
+
+    blocks = manager.load_blocks_by_sequence_range("test-session", 0, 2)
+
+    assert len(blocks) == 3
+    assert blocks[0].sequence == 0
+    assert blocks[1].sequence == 1
+    assert blocks[2].sequence == 2
+
+  def test_load_blocks_by_sequence_range_returns_empty_for_no_matches(self, tmp_path: Path) -> None:
+    """load_blocks_by_sequence_range should return empty list for no matches."""
+    manager = SessionManager(session_dir=tmp_path / "sessions")
+
+    # Create a session file
+    session_file = tmp_path / "sessions" / "test-session.jsonl"
+    session_file.parent.mkdir(parents=True, exist_ok=True)
+    session_file.write_text(
+      '{"block_id":"test-session-0","role":"user","content":"Hello","metadata":{},"timestamp":"2024-01-15T10:00:00+00:00","sequence":0}\n'
+    )
+
+    blocks = manager.load_blocks_by_sequence_range("test-session", 10, 20)
+
+    assert blocks == []
+
+  def test_load_blocks_by_sequence_range_raises_for_missing_file(self, tmp_path: Path) -> None:
+    """load_blocks_by_sequence_range should raise SessionError for missing file."""
+    manager = SessionManager(session_dir=tmp_path / "sessions")
+
+    try:
+      manager.load_blocks_by_sequence_range("non-existent-session", 0, 10)
+      raise AssertionError("Should have raised SessionError")
+    except SessionError as e:
+      assert e.operation == "load_blocks"
+      assert "not found" in str(e).lower()
+
+  def test_load_blocks_by_sequence_range_inclusive_range(self, tmp_path: Path) -> None:
+    """load_blocks_by_sequence_range should include both start and end."""
+    manager = SessionManager(session_dir=tmp_path / "sessions")
+
+    # Create a session file
+    session_file = tmp_path / "sessions" / "test-session.jsonl"
+    session_file.parent.mkdir(parents=True, exist_ok=True)
+    session_file.write_text(
+      '{"block_id":"test-session-0","role":"user","content":"Zero","metadata":{},"timestamp":"2024-01-15T10:00:00+00:00","sequence":0}\n'
+      '{"block_id":"test-session-1","role":"assistant","content":"One","metadata":{},"timestamp":"2024-01-15T10:00:01+00:00","sequence":1}\n'
+      '{"block_id":"test-session-2","role":"user","content":"Two","metadata":{},"timestamp":"2024-01-15T10:00:02+00:00","sequence":2}\n'
+    )
+
+    blocks = manager.load_blocks_by_sequence_range("test-session", 1, 1)
+
+    assert len(blocks) == 1
+    assert blocks[0].sequence == 1
+
+  def test_load_blocks_by_sequence_range_preserves_metadata(self, tmp_path: Path) -> None:
+    """load_blocks_by_sequence_range should preserve block metadata."""
+    manager = SessionManager(session_dir=tmp_path / "sessions")
+
+    # Create a session file with metadata
+    session_file = tmp_path / "sessions" / "test-session.jsonl"
+    session_file.parent.mkdir(parents=True, exist_ok=True)
+    session_file.write_text(
+      '{"block_id":"test-session-0","role":"user","content":"Hello","metadata":{"key":"value"},"timestamp":"2024-01-15T10:00:00+00:00","sequence":0}\n'
+    )
+
+    blocks = manager.load_blocks_by_sequence_range("test-session", 0, 0)
+
+    assert len(blocks) == 1
+    assert blocks[0].metadata == {"key": "value"}

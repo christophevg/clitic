@@ -18,6 +18,7 @@ from rich.console import Console
 from rich.segment import Segment as RichSegment
 from rich.style import Style
 from rich.text import Text
+from textual._context import NoActiveAppError
 from textual.events import Resize
 from textual.geometry import Size
 from textual.reactive import reactive
@@ -122,6 +123,10 @@ class Conversation(ScrollView):
   Conversation.paused {
     border-top: thick $warning;
   }
+
+  Conversation.loading {
+    opacity: 0.7;
+  }
   """
 
   BINDINGS = [
@@ -142,6 +147,7 @@ class Conversation(ScrollView):
     auto_scroll: bool = True,
     persistence_enabled: bool = False,
     session_dir: Path | None = None,
+    max_blocks_in_memory: int = 100,
     name: str | None = None,
     id: str | None = None,  # noqa: A002
     classes: str | None = None,
@@ -155,6 +161,9 @@ class Conversation(ScrollView):
         auto_scroll: Whether to automatically scroll to new content.
         persistence_enabled: Whether to enable session persistence.
         session_dir: Optional session directory for persistence.
+        max_blocks_in_memory: Maximum blocks to keep in memory (0 = unlimited).
+            When exceeded, oldest blocks are pruned from memory but remain
+            in the session file. Default: 100.
         name: Name of the widget.
         id: ID of the widget.
         classes: Space-separated CSS classes.
@@ -169,6 +178,10 @@ class Conversation(ScrollView):
     self._total_lines: int = 0
     self._last_width: int = 0
     self._session_manager: SessionManager | None = None
+    # Pruning-related state
+    self._max_blocks_in_memory: int = max_blocks_in_memory
+    self._pruned_blocks: dict[int, tuple[str, int]] = {}  # sequence -> (block_id, line_count)
+    self._is_loading: bool = False
     super().__init__(name=name, id=id, classes=classes, disabled=disabled)
     self.auto_scroll = auto_scroll
 
@@ -187,6 +200,32 @@ class Conversation(ScrollView):
     """Read-only session UUID."""
     return self._session_uuid
 
+  @property
+  def max_blocks_in_memory(self) -> int:
+    """Maximum blocks to keep in memory (0 = unlimited)."""
+    return self._max_blocks_in_memory
+
+  @max_blocks_in_memory.setter
+  def max_blocks_in_memory(self, value: int) -> None:
+    """Set the maximum blocks to keep in memory.
+
+    Args:
+        value: The maximum number of blocks (0 = unlimited).
+    """
+    if value < 0:
+      raise ValueError("max_blocks_in_memory must be >= 0")
+    self._max_blocks_in_memory = value
+
+  @property
+  def in_memory_block_count(self) -> int:
+    """Number of blocks currently in memory."""
+    return len(self._blocks)
+
+  @property
+  def pruned_block_count(self) -> int:
+    """Number of blocks that have been pruned from memory."""
+    return len(self._pruned_blocks)
+
   def _get_content_width(self) -> int:
     """Get the available content width for rendering.
 
@@ -198,6 +237,175 @@ class Conversation(ScrollView):
       # Account for horizontal padding from CSS (padding: 1 = 2 chars total)
       return max(1, region.width - 2)
     return _DEFAULT_WIDTH
+
+  def _should_prune(self) -> bool:
+    """Check if pruning should occur.
+
+    Returns:
+        True if pruning is needed, False otherwise.
+    """
+    # Pruning disabled if threshold is 0
+    if self._max_blocks_in_memory == 0:
+      return False
+    # Pruning requires persistence
+    if self._session_manager is None:
+      return False
+    # Check if threshold exceeded
+    return len(self._blocks) > self._max_blocks_in_memory
+
+  def _prune_oldest_blocks(self) -> None:
+    """Prune oldest blocks from memory.
+
+    Evicts blocks from memory while preserving them in the session file.
+    The pruned blocks are tracked in _pruned_blocks for lazy loading.
+    """
+    if not self._should_prune():
+      return
+
+    # Calculate how many blocks to remove
+    blocks_to_prune = len(self._blocks) - self._max_blocks_in_memory
+
+    for _ in range(blocks_to_prune):
+      if not self._blocks:
+        break
+
+      # Get the oldest block (first in list)
+      oldest_block = self._blocks[0]
+      sequence = oldest_block.info.sequence
+      block_id = oldest_block.info.block_id
+      line_count = oldest_block.line_count
+
+      # Record in pruned_blocks before removing
+      self._pruned_blocks[sequence] = (block_id, line_count)
+
+      # Remove from blocks list
+      self._blocks.pop(0)
+
+      # Remove from strips
+      self._strips = self._strips[line_count:]
+
+      # Update cumulative heights
+      lines_removed = line_count
+      self._cumulative_heights = [h - lines_removed for h in self._cumulative_heights]
+      self._cumulative_heights.pop(0)
+
+      # Update total lines
+      self._total_lines -= line_count
+      self.virtual_size = Size(
+        self.virtual_size.width,
+        self._total_lines,
+      )
+
+    # Rebuild block index (indices shifted)
+    self._block_index.clear()
+    for i, block in enumerate(self._blocks):
+      self._block_index[block.info.block_id] = i
+
+    # Refresh display
+    self.refresh()
+
+  def _restore_pruned_blocks(self, start_sequence: int, count: int = 1) -> bool:
+    """Restore pruned blocks from the session file.
+
+    Loads blocks from the file and inserts them back into memory.
+
+    Args:
+        start_sequence: The sequence number to start restoring from.
+        count: Number of blocks to restore (default: 1).
+
+    Returns:
+        True if blocks were restored, False otherwise.
+    """
+    # Prevent concurrent loading
+    if self._is_loading:
+      return False
+
+    if self._session_manager is None:
+      return False
+
+    # Check which sequences are already in memory
+    in_memory_sequences = {block.info.sequence for block in self._blocks}
+
+    # Find sequences to restore (must be pruned AND not already in memory)
+    sequences_to_restore = sorted(
+      [s for s in self._pruned_blocks.keys()
+       if s >= start_sequence and s not in in_memory_sequences]
+    )[:count]
+
+    if not sequences_to_restore:
+      return False
+
+    self._is_loading = True
+    self.add_class("loading")
+    try:
+      # Load blocks from file
+      end_sequence = max(sequences_to_restore)
+      blocks_to_restore = self._session_manager.load_blocks_by_sequence_range(
+        self._session_uuid, start_sequence, end_sequence
+      )
+
+      if not blocks_to_restore:
+        return False
+
+      # Get current render width
+      width = self._get_content_width()
+
+      # Insert blocks at the beginning
+      inserted_count = 0
+      for block_info in reversed(blocks_to_restore):
+        # Check if this sequence is in pruned_blocks AND not already in memory
+        if block_info.sequence not in self._pruned_blocks:
+          continue
+        if block_info.sequence in in_memory_sequences:
+          continue
+
+        # Remove from pruned_blocks
+        del self._pruned_blocks[block_info.sequence]
+
+        # Create block data
+        block = _BlockData(info=block_info)
+
+        # Render the block
+        block_strips = self._render_block_to_strips(block, width)
+        block.line_count = len(block_strips)
+
+        # Insert at beginning
+        self._blocks.insert(0, block)
+
+        # Insert strips at beginning
+        self._strips = block_strips + self._strips
+
+        # Update cumulative heights
+        for i in range(len(self._cumulative_heights)):
+          self._cumulative_heights[i] += block.line_count
+        self._cumulative_heights.insert(0, block.line_count)
+
+        # Update total lines
+        self._total_lines += block.line_count
+
+        inserted_count += 1
+
+      if inserted_count == 0:
+        return False
+
+      # Rebuild block index
+      self._block_index.clear()
+      for i, block in enumerate(self._blocks):
+        self._block_index[block.info.block_id] = i
+
+      # Update virtual size
+      region = self.scrollable_content_region
+      vwidth = region.width if region and region.width > 0 else width
+      self.virtual_size = Size(vwidth, self._total_lines)
+
+      # Refresh display
+      self.refresh()
+
+      return True
+
+    finally:
+      self._is_loading = False
+      self.remove_class("loading")
 
   def _render_block_to_strips(self, block: _BlockData, width: int) -> list[Strip]:
     """Render a block's content to a list of Strips.
@@ -278,6 +486,9 @@ class Conversation(ScrollView):
     # Call parent's watch_scroll_y to ensure ScrollView updates properly
     super().watch_scroll_y(old, new)
     self._update_auto_scroll_from_scroll_position()
+    # Check if we need to restore pruned blocks when scrolling up
+    # Pass the new scroll position for testing purposes
+    self._check_and_restore_pruned_blocks(_scroll_y=new)
 
   def on_resize(self, event: Resize) -> None:
     """Handle resize events to re-render content with new width.
@@ -303,6 +514,61 @@ class Conversation(ScrollView):
     # Scrolled up - pause auto-scroll
     else:
       self.auto_scroll = False
+
+  def _check_and_restore_pruned_blocks(self, _scroll_y: float | None = None) -> None:
+    """Check if pruned blocks should be restored based on scroll position.
+
+    When the user scrolls near the top (within RESTORE_THRESHOLD lines),
+    restore pruned blocks from the session file to provide seamless UX.
+
+    The restored blocks are inserted at the top, and scroll position is
+    adjusted to maintain the user's view.
+
+    Args:
+        _scroll_y: Optional scroll position for testing. If None, uses self.scroll_y.
+    """
+    RESTORE_THRESHOLD = 10  # Lines from top to trigger restoration
+    current_scroll_y = _scroll_y if _scroll_y is not None else self.scroll_y
+
+    # Don't restore if no pruned blocks
+    if not self._pruned_blocks:
+      return
+
+    # Don't restore if already loading
+    if self._is_loading:
+      return
+
+    # Don't restore if persistence is disabled
+    if self._session_manager is None:
+      return
+
+    # Check if user is scrolling near the top
+    if current_scroll_y > RESTORE_THRESHOLD:
+      return
+
+    # Find the minimum sequence in pruned blocks (oldest pruned block)
+    min_sequence = min(self._pruned_blocks.keys())
+
+    # Get the line count of the block we're about to restore
+    # to adjust scroll position
+    block_info = self._pruned_blocks[min_sequence]
+    if isinstance(block_info, tuple):
+      _, line_count = block_info
+    else:
+      line_count = 0
+
+    # Restore the block
+    restored = self._restore_pruned_blocks(min_sequence, count=1)
+
+    # Adjust scroll position to maintain user's view
+    # After restoration, the new block is at the top, shifting everything down
+    if restored and line_count > 0:
+      try:
+        self.scroll_to(y=self.scroll_y + line_count, animate=False)
+      except NoActiveAppError:
+        # Widget not mounted - scroll adjustment will happen naturally
+        # when the widget is mounted and renders
+        pass
 
   def watch_auto_scroll(self, old: bool, new: bool) -> None:
     """Watch for auto_scroll changes to update visual state.
@@ -391,6 +657,10 @@ class Conversation(ScrollView):
     if self._session_manager is not None:
       self._session_manager.save_block(info)
 
+    # Prune oldest blocks if threshold exceeded
+    if self._should_prune():
+      self._prune_oldest_blocks()
+
     # Update the block index for O(1) lookup
     self._block_index[block_id] = len(self._blocks) - 1
 
@@ -433,6 +703,7 @@ class Conversation(ScrollView):
     self._strips.clear()
     self._cumulative_heights.clear()
     self._block_index.clear()
+    self._pruned_blocks.clear()
     self._total_lines = 0
     self._last_width = 0
     self.virtual_size = Size(0, 0)
@@ -448,7 +719,9 @@ class Conversation(ScrollView):
     return len(self._blocks)
 
   def get_block(self, block_id: str) -> BlockInfo | None:
-    """Get block by ID. O(1) performance.
+    """Get block by ID. O(1) performance for in-memory blocks.
+
+    Falls back to file lookup for pruned blocks.
 
     Args:
         block_id: The unique identifier of the block.
@@ -456,10 +729,25 @@ class Conversation(ScrollView):
     Returns:
         The BlockInfo if found, None otherwise.
     """
-    if block_id not in self._block_index:
-      return None
-    index = self._block_index[block_id]
-    return self._blocks[index].info
+    # Try in-memory first
+    if block_id in self._block_index:
+      index = self._block_index[block_id]
+      return self._blocks[index].info
+
+    # Fall back to file lookup for pruned blocks
+    if self._session_manager is not None:
+      # Extract sequence number from block_id (format: {session_uuid}-{sequence})
+      try:
+        sequence = int(block_id.split("-")[-1])
+        # Check if this block is pruned
+        if sequence in self._pruned_blocks:
+          return self._session_manager.load_block_by_sequence(
+            self._session_uuid, sequence
+          )
+      except (ValueError, IndexError):
+        pass
+
+    return None
 
   def get_block_at_index(self, index: int) -> BlockInfo | None:
     """Get block by sequence position. O(1) performance.
@@ -523,6 +811,7 @@ class Conversation(ScrollView):
     cls,
     session_id: str,
     session_dir: Path | None = None,
+    max_blocks_in_memory: int = 100,
     **kwargs: Any,
   ) -> Conversation:
     """Resume a conversation from a saved session.
@@ -530,6 +819,9 @@ class Conversation(ScrollView):
     Args:
         session_id: The session ID to resume.
         session_dir: Optional session directory override.
+        max_blocks_in_memory: Maximum blocks to keep in memory (0 = unlimited).
+            When the session has more blocks than this threshold, only the
+            newest blocks are loaded into memory. Default: 100.
         **kwargs: Additional arguments passed to Conversation constructor.
 
     Returns:
@@ -544,10 +836,34 @@ class Conversation(ScrollView):
     blocks = manager.resume_session(session_id)
 
     # Create conversation with the resumed session UUID
-    conversation = cls(session_uuid=session_id, **kwargs)
+    # Enable persistence so that get_block can load pruned blocks from file
+    conversation = cls(
+      session_uuid=session_id,
+      persistence_enabled=True,
+      session_dir=session_dir,
+      max_blocks_in_memory=max_blocks_in_memory,
+      **kwargs,
+    )
 
     # Restore sequence counter from last block
     conversation._sequence_counter = max(b.sequence for b in blocks) + 1 if blocks else 0
+
+    # Determine which blocks to keep in memory
+    total_blocks = len(blocks)
+    if max_blocks_in_memory > 0 and total_blocks > max_blocks_in_memory:
+      # Keep only the newest blocks in memory
+      blocks_to_prune = total_blocks - max_blocks_in_memory
+      pruned_blocks = blocks[:blocks_to_prune]
+      blocks_to_keep = blocks[blocks_to_prune:]
+
+      # Record pruned blocks
+      for block_info in pruned_blocks:
+        # We don't know the line count yet, so we store 0 as placeholder
+        # The actual line count will be calculated if the block is restored
+        conversation._pruned_blocks[block_info.sequence] = (block_info.block_id, 0)
+
+      # Only restore the newest blocks
+      blocks = blocks_to_keep
 
     # Restore blocks (using internal append to avoid triggering persistence)
     for block_info in blocks:

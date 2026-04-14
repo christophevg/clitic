@@ -92,16 +92,16 @@
   - **Dependencies:** conversation-block-model
   - **Priority:** P1
 
-- [ ] **conversation-block-pruning**
+- [x] **conversation-block-pruning**
   - Add memory-aware pruning with transparent retrieval (FR-007)
   - **Acceptance Criteria:**
-    - [ ] Configurable `max_blocks_in_memory` threshold (default: 100, 0 = unlimited)
-    - [ ] When exceeded, oldest blocks removed from memory BUT still in JSONL file
-    - [ ] Pruning never deletes data — only evicts from memory
-    - [ ] Track which blocks are in memory vs persisted only
-    - [ ] `get_block(block_id)` retrieves from memory, falls back to file
-    - [ ] Scrolling up to pruned blocks triggers transparent reload from file
-    - [ ] Loading indicator briefly shown during block retrieval
+    - [x] Configurable `max_blocks_in_memory` threshold (default: 100, 0 = unlimited)
+    - [x] When exceeded, oldest blocks removed from memory BUT still in JSONL file
+    - [x] Pruning never deletes data — only evicts from memory
+    - [x] Track which blocks are in memory vs persisted only
+    - [x] `get_block(block_id)` retrieves from memory, falls back to file
+    - [x] Scrolling up to pruned blocks triggers transparent reload from file
+    - [x] Loading indicator briefly shown during block retrieval
   - **Dependencies:** conversation-session-persistence
   - **Priority:** P1
 
@@ -545,6 +545,24 @@
   - Added CLI arguments to showcase: `--resume`, `--list-sessions`, `--persistence`
   - 34 new tests for session management
   - Total: 377 tests passing
+
+- [x] **conversation-block-pruning**
+  - Added memory-aware pruning with transparent retrieval
+  - Configurable `max_blocks_in_memory` parameter (default: 100, 0 = unlimited)
+  - Added `_pruned_blocks` dict to track evicted blocks
+  - `_should_prune()` checks threshold and persistence conditions
+  - `_prune_oldest_blocks()` evicts oldest blocks from memory but preserves in JSONL
+  - `get_block(block_id)` falls back to file lookup for pruned blocks
+  - `_restore_pruned_blocks()` reloads blocks from file
+  - `_check_and_restore_pruned_blocks()` triggers automatic restoration on scroll near top
+  - Loading indicator with CSS class `Conversation.loading` (opacity: 0.7)
+  - Scroll position adjustment maintains user's view after restoration
+  - Concurrent loading prevention with `_is_loading` flag
+  - SessionManager extensions: `load_block_by_sequence()`, `load_blocks_by_sequence_range()`
+  - Properties: `max_blocks_in_memory`, `in_memory_block_count`, `pruned_block_count`
+  - 41 new tests for pruning and scroll restoration
+  - All reviews passed (functional, API, UX, code)
+  - Total: 406 tests passing
 
 - [x] **conversation-block-model**
   - Refined block data model with ID, metadata, and timestamp
