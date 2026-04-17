@@ -1,11 +1,11 @@
 # clitic
 
 [![Documentation](https://readthedocs.org/projects/clitic/badge/?version=latest)](https://clitic.readthedocs.io/)
-[![PyPI version](https://badge.fury.io/py/clitic.svg)](https://badge.fury.io/py/clitic)
+[![PyPI version](https://img.shields.io/pypi/v/clitic.svg)](https://pypi.org/project/clitic/)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/clitic.svg)](https://pypi.org/project/clitic/)
 [![Build Status](https://github.com/christophevg/clitic/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/christophevg/clitic/actions/workflows/ci.yml)
 [![Coverage Status](https://coveralls.io/repos/github/christophevg/clitic/badge.svg?branch=master)](https://coveralls.io/github/christophevg/clitic)
-[![License](https://img.shields.io/github/license/christophevg/clitic)](https://github.com/christophevg/clitic/blob/master/LICENSE)
+[![License: MIT](https://img.shields.io/github/license/christophevg/clitic)](https://github.com/christophevg/clitic/blob/master/LICENSE)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://docs.astral.sh/ruff/)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://mypy-lang.org/)
 
@@ -39,28 +39,48 @@ pip install clitic
 
 ## Quick Start
 
-```python
-from clitic import App, Conversation
+Run the interactive showcase to see clitic in action:
 
-conversation = Conversation()
-app = App(title="My CLI Tool")
-
-@app.on_submit
-def handle_input(text: str):
-    conversation.append("user", text)
-    # Process input...
-
-app.run()
+```bash
+python -m clitic
 ```
+
+Or build your own TUI application:
+
+```python
+from textual.app import ComposeResult
+from clitic import App, Conversation, InputBar
+
+class MyApp(App):
+    def compose(self) -> ComposeResult:
+        yield Conversation(id="messages")
+        yield InputBar(placeholder="Type your message...")
+
+    def on_mount(self) -> None:
+        conversation = self.query_one(Conversation)
+        conversation.append("system", "Welcome!")
+
+    def on_input_bar_submit(self, event: InputBar.Submit) -> None:
+        conversation = self.query_one(Conversation)
+        conversation.append("user", event.text)
+
+MyApp().run()
+```
+
+See the [documentation](https://clitic.readthedocs.io/) for complete API reference.
 
 ## Features
 
 - **InputBar**: Multiline input with auto-grow, cursor movement, selection, and submit-on-Enter
-- **Conversation**: Scrollable content container with expandable blocks (planned)
-- **Tree/Table**: Collapsible tree and table widgets (planned)
-- **Plugins**: Markdown, diff, and terminal content renderers (planned)
-- **Theming**: Dark and light themes with customization
-- **Responsive**: Layouts adapt to terminal width (planned)
+- **Conversation**: Scrollable content container with virtual rendering for 100,000+ lines
+- **Session persistence**: Resume conversations with block pruning for memory efficiency
+- **Theming**: Dark and light themes with CSS-like styling
+
+## Roadmap
+
+- **Tree/Table**: Collapsible tree and table widgets
+- **Plugins**: Markdown, diff, and terminal content renderers
+- **Responsive layouts**: Adaptive layouts based on terminal width
 
 ## Development
 
@@ -124,6 +144,10 @@ make clean-all  # Remove build artifacts and virtualenv
 ```
 
 Run `make help` for all available targets.
+
+## Changelog
+
+See [CHANGELOG](docs/development/changelog.md) for version history.
 
 ## License
 
