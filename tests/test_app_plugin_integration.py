@@ -17,7 +17,7 @@ import pytest
 from textual.app import ComposeResult
 
 from clitic import App as CliticApp
-from clitic import Conversation, ContentPlugin, InputBar
+from clitic import ContentPlugin, Conversation, InputBar
 
 if TYPE_CHECKING:
   from textual.widget import Widget
@@ -41,7 +41,7 @@ class LifecycleTrackingPlugin(ContentPlugin):
     """Accept all content types."""
     return True
 
-  def render(self, content: str) -> "Widget":
+  def render(self, content: str) -> Widget:
     """Render content as a mock widget."""
     class MockWidget:
       def __init__(self, text: str) -> None:
@@ -76,7 +76,7 @@ class ContentTrackingPlugin(ContentPlugin):
     """Accept text/plain content."""
     return content_type == "text/plain"
 
-  def render(self, content: str) -> "Widget":
+  def render(self, content: str) -> Widget:
     """Render content and track it."""
     self.rendered_content.append(content)
 
@@ -109,7 +109,7 @@ class PriorityPlugin(ContentPlugin):
     """Accept all content."""
     return True
 
-  def render(self, content: str) -> "Widget":
+  def render(self, content: str) -> Widget:
     """Render content."""
     class MockWidget:
       def __init__(self, text: str) -> None:
@@ -201,7 +201,7 @@ class TestPluginLifecycleIntegration:
       def can_render(self, content_type: str, content: str) -> bool:
         return True
 
-      def render(self, content: str) -> "Widget":
+      def render(self, content: str) -> Widget:
         class MockWidget:
           pass
         return MockWidget()
@@ -504,7 +504,7 @@ class TestPluginAppIntegration:
       def can_render(self, content_type: str, content: str) -> bool:
         return True
 
-      def render(self, content: str) -> "Widget":
+      def render(self, content: str) -> Widget:
         rendered_content.append(content)
         class MockWidget:
           pass
@@ -596,7 +596,7 @@ class TestPluginAppIntegration:
       def can_render(self, content_type: str, content: str) -> bool:
         return True
 
-      def render(self, content: str) -> "Widget":
+      def render(self, content: str) -> Widget:
         class MockWidget:
           pass
         return MockWidget()

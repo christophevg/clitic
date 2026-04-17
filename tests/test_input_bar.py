@@ -1,8 +1,8 @@
 """Tests for InputBar widget."""
 
-import pytest
 from unittest.mock import patch
 
+import pytest
 from textual.events import Key
 from textual.message import Message
 from textual.widgets import TextArea
