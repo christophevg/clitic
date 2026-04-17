@@ -31,6 +31,12 @@ jobs:
       - name: Run tests with coverage
         run: pytest -v --cov=clitic --cov-report=term-missing
 
+      - name: Upload coverage to Coveralls
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
   typecheck:
     runs-on: ubuntu-latest
     strategy:

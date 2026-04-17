@@ -46,6 +46,7 @@ dev = [
   "sphinx-rtd-theme>=2.0.0",
   "myst-parser>=2.0.0",
   "tox>=4.0.0",
+  "coveralls>=3.0.0",
 ]
 
 [project.urls]
