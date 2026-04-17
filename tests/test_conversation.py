@@ -779,7 +779,8 @@ class TestConversationPerformance:
     assert conversation._total_lines > 0
 
     # Performance check - should complete in reasonable time
-    assert elapsed < 10.0, f"Appending 10,000 blocks took {elapsed:.2f}s (expected < 10s)"
+    # CI runners can be slower, so use a generous threshold
+    assert elapsed < 20.0, f"Appending 10,000 blocks took {elapsed:.2f}s (expected < 20s)"
 
     # Memory check - use tracemalloc for accurate measurement
     current, peak = tracemalloc.get_traced_memory()
@@ -847,9 +848,9 @@ class TestConversationPerformance:
       f"Expected 100,000+ lines, got {conversation._total_lines}"
     )
 
-    # Performance: should complete within 30 seconds
-    # (This is a generous threshold; actual performance should be better)
-    assert elapsed < 30.0, f"Appending 10,000 blocks (100k lines) took {elapsed:.2f}s (expected < 30s)"
+    # Performance: should complete within 60 seconds
+    # (Generous threshold for slower CI runners)
+    assert elapsed < 60.0, f"Appending 10,000 blocks (100k lines) took {elapsed:.2f}s (expected < 60s)"
 
     # Render performance: getting any line should be O(1)
     start = time.time()

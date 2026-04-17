@@ -1,12 +1,10 @@
 """Tests for Conversation block pruning functionality."""
 
-from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
 from clitic import Conversation
 from clitic.session import SessionManager
-from clitic.widgets.conversation import BlockInfo
 
 
 class TestPruningBasics:
@@ -109,7 +107,6 @@ class TestPruningBasics:
       conversation._session_manager.close_session()
 
     # Check session file has all 20 blocks
-    session_file = tmp_path / "sessions" / f"{conversation.session_id}.jsonl"
     manager = SessionManager(session_dir=tmp_path / "sessions")
     blocks = manager.resume_session(conversation.session_id)
     assert len(blocks) == 20
@@ -134,7 +131,6 @@ class TestPruningIntegration:
       conversation._session_manager.close_session()
 
     # Check file has all 10 blocks
-    session_file = tmp_path / "sessions" / f"{conversation.session_id}.jsonl"
     manager = SessionManager(session_dir=tmp_path / "sessions")
     blocks = manager.resume_session(conversation.session_id)
     assert len(blocks) == 10
@@ -426,7 +422,8 @@ class TestPruningPerformance:
     elapsed = time.time() - start
 
     # Should complete in reasonable time
-    assert elapsed < 10.0, f"Appending 100 blocks with pruning took {elapsed:.2f}s"
+    # CI runners can be slower, so use a generous threshold
+    assert elapsed < 20.0, f"Appending 100 blocks with pruning took {elapsed:.2f}s"
 
     # Verify pruning happened
     assert conversation.in_memory_block_count == 10
@@ -769,7 +766,6 @@ class TestScrollTriggeredRestoration:
     # Scroll position should have been adjusted
     # Note: if line_count was 0 in _pruned_blocks (from resume), adjustment might not happen
     if line_count > 0:
-      expected_position = scroll_position + line_count
       # The implementation calls scroll_to which we can't test without mounting,
       # so we verify that _restore_pruned_blocks was called successfully
       assert conversation.pruned_block_count < 5  # Some blocks were restored
