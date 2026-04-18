@@ -39,13 +39,14 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P1
   - **Completed:** 2026-04-14
 
-- [ ] **test-conversation-resize-scroll** (Priority: 8/10 - Critical)
+- [x] **test-conversation-resize-scroll** (Priority: 8/10 - Critical)
   - Add Conversation resize/scroll integration tests
   - **Acceptance Criteria:**
-    - [ ] Integration tests for resize -> scroll position -> auto_scroll -> CSS class cycle
-    - [ ] Tests for `_update_auto_scroll_from_scroll_position`
+    - [x] Integration tests for resize -> scroll position -> auto_scroll -> CSS class cycle
+    - [x] Tests for `_update_auto_scroll_from_scroll_position`
   - **Dependencies:** test-conftest-py
   - **Priority:** P1
+  - **Completed:** 2026-04-18
 
 - [ ] **test-session-concurrency** (Priority: 7/10 - Important)
   - Add session persistence concurrent access tests
@@ -636,6 +637,19 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
 
 ## Done
+
+- [x] **test-conversation-resize-scroll**
+  - Added Conversation resize/scroll integration tests
+  - Created `TestScrollStateManagement` class with 5 tests for scroll state transitions
+  - Created `TestResizeBehavior` class with 5 tests for resize handling
+  - Created `TestVisualFeedback` class with 4 tests for CSS class toggling
+  - Created `TestEdgeCases` class with 7 tests for edge cases
+  - Tests cover resize → scroll position → auto_scroll → CSS class cycle
+  - Tests cover `_update_auto_scroll_from_scroll_position` all branches
+  - Tests use async Textual app context via `run_test()` pilot pattern
+  - Tests use `scroll_end()` and `scroll_home()` methods for reliable scrolling
+  - All tests pass with type checking and linting
+  - Total: 475 tests passing (21 new tests)
 
 - [x] **test-app-plugin-integration**
   - Added App plugin integration tests with render cycle
