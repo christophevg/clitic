@@ -48,14 +48,15 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P1
   - **Completed:** 2026-04-18
 
-- [ ] **test-session-concurrency** (Priority: 7/10 - Important)
+- [x] **test-session-concurrency** (Priority: 7/10 - Important)
   - Add session persistence concurrent access tests
   - **Acceptance Criteria:**
-    - [ ] Tests for multiple simultaneous `save_block` calls
-    - [ ] Tests for file locking/corruption scenarios
-    - [ ] Tests for large session files (>100MB)
+    - [x] Tests for multiple simultaneous `save_block` calls
+    - [x] Tests for file locking/corruption scenarios
+    - [x] Tests for large session files (>100MB)
   - **Dependencies:** test-conftest-py
-  **Priority:** P2
+  - **Priority:** P2
+  - **Completed:** 2026-04-18
 
 - [ ] **test-pruning-edge-cases** (Priority: 7/10 - Important)
   - Add Conversation memory pruning edge case tests
@@ -637,6 +638,17 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
 
 ## Done
+
+- [x] **test-session-concurrency**
+  - Added session persistence concurrent access tests
+  - Created `TestConcurrentSaveBlock` class with 4 tests for concurrent writes
+  - Created `TestFileCorruption` class with 4 tests for corruption scenarios
+  - Created `TestLargeSessionFiles` class with 4 tests for large file handling
+  - Created `TestSessionConcurrencyEdgeCases` class with 3 tests for edge cases
+  - Created `TestSessionStressTests` class with 3 tests for stress scenarios
+  - Tests document current behavior (raises SessionError on corrupted JSON)
+  - Tests cover atomic writes, concurrent access, large files, unicode content
+  - Total: 493 tests passing (18 new tests)
 
 - [x] **test-conversation-resize-scroll**
   - Added Conversation resize/scroll integration tests
