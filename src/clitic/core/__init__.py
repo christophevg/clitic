@@ -3,5 +3,5 @@
 from clitic.core.app import App
 
 __all__ = [
-  "App",
+    "App",
 ]

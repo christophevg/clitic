@@ -8,228 +8,228 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-  from textual.app import App
-  from textual.widget import Widget
+    from textual.app import App
+    from textual.widget import Widget
 
-  # Type alias for App with default ActionResult type
-  TextualApp = App[object]
+    # Type alias for App with default ActionResult type
+    TextualApp = App[object]
 
 
 class Renderable(Protocol):
-  """Protocol for renderable content types.
+    """Protocol for renderable content types.
 
-  Any object that implements __str__ can be used as renderable content,
-  allowing flexibility in content types beyond just strings.
-  """
+    Any object that implements __str__ can be used as renderable content,
+    allowing flexibility in content types beyond just strings.
+    """
 
-  def __str__(self) -> str:
-    """Return string representation of the content."""
-    ...
+    def __str__(self) -> str:
+        """Return string representation of the content."""
+        ...
 
 
 class Highlighter(Protocol):
-  """Protocol for syntax highlighters.
+    """Protocol for syntax highlighters.
 
-  Highlighters transform plain text into syntax-highlighted strings,
-  typically using Rich markup or similar formatting.
-  """
-
-  def highlight(self, text: str) -> str:
-    """Apply syntax highlighting to text.
-
-    Args:
-        text: Plain text to highlight.
-
-    Returns:
-        Highlighted text with markup (e.g., Rich markup).
+    Highlighters transform plain text into syntax-highlighted strings,
+    typically using Rich markup or similar formatting.
     """
-    ...
+
+    def highlight(self, text: str) -> str:
+        """Apply syntax highlighting to text.
+
+        Args:
+            text: Plain text to highlight.
+
+        Returns:
+            Highlighted text with markup (e.g., Rich markup).
+        """
+        ...
 
 
 class ContentPlugin(ABC):
-  """Abstract base class for content renderers.
+    """Abstract base class for content renderers.
 
-  Content plugins are responsible for rendering specific types of content
-  in the conversation display. Each plugin declares what content types it
-  can handle and provides both synchronous and asynchronous rendering.
+    Content plugins are responsible for rendering specific types of content
+    in the conversation display. Each plugin declares what content types it
+    can handle and provides both synchronous and asynchronous rendering.
 
-  Attributes:
-      name: Human-readable name of the plugin.
-      priority: Priority for plugin ordering (higher = preferred).
-  """
-
-  @property
-  @abstractmethod
-  def name(self) -> str:
-    """Return the human-readable name of this plugin."""
-    ...
-
-  @property
-  def priority(self) -> int:
-    """Return the priority for this plugin.
-
-    Higher priority plugins are checked first when determining which
-    plugin should render content. Default is 0.
-
-    Returns:
-        Priority value (higher = more preferred).
+    Attributes:
+        name: Human-readable name of the plugin.
+        priority: Priority for plugin ordering (higher = preferred).
     """
-    return 0
 
-  @abstractmethod
-  def can_render(self, content_type: str, content: str | Renderable) -> bool:
-    """Check if this plugin can render the given content.
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Return the human-readable name of this plugin."""
+        ...
 
-    Args:
-        content_type: MIME type or identifier for the content.
-        content: The content to potentially render.
+    @property
+    def priority(self) -> int:
+        """Return the priority for this plugin.
 
-    Returns:
-        True if this plugin can render the content, False otherwise.
-    """
-    ...
+        Higher priority plugins are checked first when determining which
+        plugin should render content. Default is 0.
 
-  @abstractmethod
-  def render(self, content: str | Renderable) -> "Widget":
-    """Render content to a Textual Widget.
+        Returns:
+            Priority value (higher = more preferred).
+        """
+        return 0
 
-    Args:
-        content: The content to render.
+    @abstractmethod
+    def can_render(self, content_type: str, content: str | Renderable) -> bool:
+        """Check if this plugin can render the given content.
 
-    Returns:
-        A Textual Widget displaying the rendered content.
+        Args:
+            content_type: MIME type or identifier for the content.
+            content: The content to potentially render.
 
-    Raises:
-        RenderError: If rendering fails.
-    """
-    ...
+        Returns:
+            True if this plugin can render the content, False otherwise.
+        """
+        ...
 
-  async def render_async(self, content: str | Renderable) -> "Widget":
-    """Asynchronously render content to a Textual Widget.
+    @abstractmethod
+    def render(self, content: str | Renderable) -> "Widget":
+        """Render content to a Textual Widget.
 
-    Default implementation calls the synchronous render method.
-    Subclasses may override for async rendering (e.g., fetching resources).
+        Args:
+            content: The content to render.
 
-    Args:
-        content: The content to render.
+        Returns:
+            A Textual Widget displaying the rendered content.
 
-    Returns:
-        A Textual Widget displaying the rendered content.
+        Raises:
+            RenderError: If rendering fails.
+        """
+        ...
 
-    Raises:
-        RenderError: If rendering fails.
-    """
-    return self.render(content)
+    async def render_async(self, content: str | Renderable) -> "Widget":
+        """Asynchronously render content to a Textual Widget.
 
-  def on_register(self, app: "TextualApp") -> None:  # noqa: B027
-    """Lifecycle hook called when plugin is registered with an app.
+        Default implementation calls the synchronous render method.
+        Subclasses may override for async rendering (e.g., fetching resources).
 
-    Override this method to perform initialization that requires access
-    to the app instance (e.g., loading styles, subscribing to events).
+        Args:
+            content: The content to render.
 
-    Args:
-        app: The Textual App instance.
-    """
-    pass
+        Returns:
+            A Textual Widget displaying the rendered content.
 
-  def on_unregister(self, app: "TextualApp") -> None:  # noqa: B027
-    """Lifecycle hook called when plugin is unregistered from an app.
+        Raises:
+            RenderError: If rendering fails.
+        """
+        return self.render(content)
 
-    Override this method to perform cleanup (e.g., unsubscribing from
-    events, releasing resources).
+    def on_register(self, app: "TextualApp") -> None:  # noqa: B027
+        """Lifecycle hook called when plugin is registered with an app.
 
-    Args:
-        app: The Textual App instance.
-    """
-    pass
+        Override this method to perform initialization that requires access
+        to the app instance (e.g., loading styles, subscribing to events).
+
+        Args:
+            app: The Textual App instance.
+        """
+        pass
+
+    def on_unregister(self, app: "TextualApp") -> None:  # noqa: B027
+        """Lifecycle hook called when plugin is unregistered from an app.
+
+        Override this method to perform cleanup (e.g., unsubscribing from
+        events, releasing resources).
+
+        Args:
+            app: The Textual App instance.
+        """
+        pass
 
 
 class ModeProvider(ABC):
-  """Abstract base class for input mode providers.
+    """Abstract base class for input mode providers.
 
-  Mode providers detect and handle different input modes (e.g., markdown,
-  code blocks, plain text). They provide syntax highlighting and transform
-  input text when entering or exiting the mode.
+    Mode providers detect and handle different input modes (e.g., markdown,
+    code blocks, plain text). They provide syntax highlighting and transform
+    input text when entering or exiting the mode.
 
-  Attributes:
-      name: Human-readable name of the mode.
-      indicator: Short indicator displayed in the input bar.
-      priority: Priority for mode detection (higher = preferred).
-  """
-
-  @property
-  @abstractmethod
-  def name(self) -> str:
-    """Return the human-readable name of this mode."""
-    ...
-
-  @property
-  @abstractmethod
-  def indicator(self) -> str:
-    """Return the short indicator for this mode.
-
-    This is displayed in the input bar to show the current mode.
+    Attributes:
+        name: Human-readable name of the mode.
+        indicator: Short indicator displayed in the input bar.
+        priority: Priority for mode detection (higher = preferred).
     """
-    ...
 
-  @property
-  def priority(self) -> int:
-    """Return the priority for this mode provider.
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Return the human-readable name of this mode."""
+        ...
 
-    Higher priority providers are checked first when detecting the
-    current input mode. Default is 0.
+    @property
+    @abstractmethod
+    def indicator(self) -> str:
+        """Return the short indicator for this mode.
 
-    Returns:
-        Priority value (higher = more preferred).
-    """
-    return 0
+        This is displayed in the input bar to show the current mode.
+        """
+        ...
 
-  @abstractmethod
-  def detect(self, text: str, cursor_position: int) -> bool:
-    """Detect if this mode should be active.
+    @property
+    def priority(self) -> int:
+        """Return the priority for this mode provider.
 
-    Args:
-        text: Current input text.
-        cursor_position: Current cursor position in the text.
+        Higher priority providers are checked first when detecting the
+        current input mode. Default is 0.
 
-    Returns:
-        True if this mode should be active, False otherwise.
-    """
-    ...
+        Returns:
+            Priority value (higher = more preferred).
+        """
+        return 0
 
-  @abstractmethod
-  def get_highlighter(self) -> Highlighter | None:
-    """Get the syntax highlighter for this mode.
+    @abstractmethod
+    def detect(self, text: str, cursor_position: int) -> bool:
+        """Detect if this mode should be active.
 
-    Returns:
-        A Highlighter instance, or None if no highlighting is available.
-    """
-    ...
+        Args:
+            text: Current input text.
+            cursor_position: Current cursor position in the text.
 
-  def on_enter(self, text: str) -> str:
-    """Lifecycle hook called when entering this mode.
+        Returns:
+            True if this mode should be active, False otherwise.
+        """
+        ...
 
-    Override to transform text when the mode becomes active.
-    Default returns text unchanged.
+    @abstractmethod
+    def get_highlighter(self) -> Highlighter | None:
+        """Get the syntax highlighter for this mode.
 
-    Args:
-        text: Current input text.
+        Returns:
+            A Highlighter instance, or None if no highlighting is available.
+        """
+        ...
 
-    Returns:
-        Transformed text (default: unchanged).
-    """
-    return text
+    def on_enter(self, text: str) -> str:
+        """Lifecycle hook called when entering this mode.
 
-  def on_exit(self, text: str) -> str:
-    """Lifecycle hook called when exiting this mode.
+        Override to transform text when the mode becomes active.
+        Default returns text unchanged.
 
-    Override to transform text when leaving the mode.
-    Default returns text unchanged.
+        Args:
+            text: Current input text.
 
-    Args:
-        text: Current input text.
+        Returns:
+            Transformed text (default: unchanged).
+        """
+        return text
 
-    Returns:
-        Transformed text (default: unchanged).
-    """
-    return text
+    def on_exit(self, text: str) -> str:
+        """Lifecycle hook called when exiting this mode.
+
+        Override to transform text when leaving the mode.
+        Default returns text unchanged.
+
+        Args:
+            text: Current input text.
+
+        Returns:
+            Transformed text (default: unchanged).
+        """
+        return text

@@ -4,7 +4,7 @@
 VENV_NAME := clitic
 PYTHON_VERSION := 3.11
 
-.PHONY: setup activate install test test-all test-3.10 test-3.11 test-3.12 test-file typecheck lint format build publish clean clean-all help showcase docs docs-view
+.PHONY: setup activate install test test-all test-3.10 test-3.11 test-3.12 test-file test-one test-benchmark test-full typecheck lint format build publish clean clean-all help showcase docs docs-view
 
 # Guard to ensure virtual environment is active
 define check_venv
@@ -44,7 +44,15 @@ install: ## Install package in development mode with dev dependencies
 
 ## Testing
 
-test: ## Run all tests with coverage
+test: ## Run all tests with coverage (excludes benchmark tests)
+	$(check_venv)
+	pytest -m "not benchmark"
+
+test-benchmark: ## Run only benchmark tests (performance tests)
+	$(check_venv)
+	pytest -m benchmark
+
+test-all-benchmarks: ## Run all tests including benchmarks
 	$(check_venv)
 	pytest
 
@@ -56,8 +64,12 @@ test-one: ## Run specific test function (usage: make test-one TEST=tests/test_pa
 	$(check_venv)
 	pytest $(TEST)
 
-test-all: ## Run tests against all supported Python versions (3.10, 3.11, 3.12)
+test-all: ## Run tests against all Python versions (3.10, 3.11, 3.12), excludes benchmarks
 	tox
+
+test-full: ## Run all tests including benchmarks against current Python
+	$(check_venv)
+	pytest
 
 test-3.10: ## Run tests against Python 3.10 only
 	tox -e py310
@@ -151,6 +163,12 @@ help: ## Show this help message
 	@echo "  make activate     - Show activation instructions"
 	@echo "  make install      - Install dependencies (requires venv)"
 	@echo ""
+	@echo "Testing:"
+	@echo "  make test         - Run tests (excludes benchmarks)"
+	@echo "  make test-benchmark - Run only benchmark tests"
+	@echo "  make test-full    - Run all tests including benchmarks"
+	@echo "  make test-all     - Run tests on all Python versions (3.10, 3.11, 3.12)"
+	@echo ""
 	@echo "Showcase:"
 	@echo "  make showcase     - Run the feature showcase application"
 	@echo "  make screenshot   - Capture screenshot of showcase"
@@ -160,4 +178,4 @@ help: ## Show this help message
 	@echo "  make docs-view    - Build and open documentation in browser"
 	@echo ""
 	@echo "Targets:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | grep -v "setup\|activate\|install\|showcase\|docs" | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | grep -v "setup\|activate\|install\|showcase\|docs\|test" | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'

@@ -7,6 +7,6 @@ provider base classes.
 from clitic.completion.base import Completion, CompletionProvider
 
 __all__ = [
-  "Completion",
-  "CompletionProvider",
+    "Completion",
+    "CompletionProvider",
 ]
