@@ -323,3 +323,48 @@ conversation = Conversation(auto_scroll=False)
 conversation.auto_scroll = False  # Pause
 conversation.auto_scroll = True   # Resume
 ```
+
+### Block Navigation
+
+Navigate between blocks using keyboard shortcuts:
+
+| Shortcut | Action |
+|----------|--------|
+| Alt+Up | Select previous block |
+| Alt+Down | Select next block |
+| Escape | Clear selection |
+
+```python
+# Navigate programmatically
+conversation.action_nav_prev_block()  # Select previous block
+conversation.action_nav_next_block()  # Select next block
+conversation.action_deselect_block()  # Clear selection
+
+# Get selected block
+if conversation.selected_block_info:
+    print(f"Selected: {conversation.selected_block_info.content[:50]}")
+```
+
+### Navigation Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `selected_block` | `str \| None` | Block ID of selected block, or None |
+| `selected_block_index` | `int \| None` | 0-indexed position of selected block |
+| `selected_block_info` | `BlockInfo \| None` | BlockInfo for selected block |
+| `wrap_navigation` | `bool` | Whether navigation wraps at boundaries (default: True) |
+| `navigation_bell` | `bool` | Whether to play bell at boundaries (default: True) |
+
+### Navigation Configuration
+
+```python
+# Disable wrap behavior
+conversation = Conversation(wrap_navigation=False)
+
+# Disable bell at boundaries
+conversation = Conversation(navigation_bell=False)
+
+# Configure after creation
+conversation.wrap_navigation = False
+conversation.navigation_bell = False
+```

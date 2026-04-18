@@ -870,7 +870,46 @@ The following UX identifiers map to TODO.md tasks:
 
 ## 17. Task-Specific UX Reviews
 
-### 17.1 conversation-block-model Review (2026-04-14)
+### 17.1 conversation-block-navigation Review (2026-04-18)
+
+**Task:** Add block navigation and selection to the Conversation widget (FR-007)
+
+**UX Assessment:**
+
+| Aspect | Assessment | Recommendation |
+|--------|------------|----------------|
+| Visual treatment | Subtle background highlight preferred over border | Approved - use 10-15% opacity tint |
+| Role color integration | Preserve role colors on selection | Approved - role-based border accent |
+| Navigation model | Alt+Up/Down + Escape + click-to-select | Approved - standard pattern |
+| Wrap behavior | Configurable with visual bell feedback | Approved - add `wrap_navigation` property |
+| Scroll behavior | Auto-scroll to center selected block | Approved - 200ms animation |
+| State management | Transient selection, reactive properties | Approved - no persistence |
+| Accessibility | Screen reader announcements | Approved - role + content preview |
+| Pruned blocks | Transparent loading with indicator | Approved - reuse existing loading state |
+
+**Key Design Decisions:**
+
+1. **Visual Treatment:** Background highlight (not border) to avoid conflict with role border
+2. **Navigation:** Alt+Up/Down for keyboard, click for mouse, Escape to deselect
+3. **Wrap:** Configurable with `wrap_navigation` property, visual bell at boundaries
+4. **State:** `selected_block` reactive property, `_selected_index` internal state
+5. **Accessibility:** Announce "Block X of Y, role: content preview"
+
+**CSS Class Names:**
+
+| Class | Usage |
+|-------|-------|
+| `.selected` | Base selection state |
+| `.selected.user` | User message selection (blue tint) |
+| `.selected.assistant` | Assistant selection (green tint) |
+| `.selected.system` | System selection (yellow tint) |
+| `.selected.tool` | Tool selection (magenta tint) |
+
+**Status:** Approved with comprehensive acceptance criteria. See `reporting/conversation-block-navigation/ux-ui-review.md` for full design specification.
+
+---
+
+### 17.2 conversation-block-model Review (2026-04-14)
 
 **Task:** Refine block data model with ID, metadata, and timestamp (FR-007)
 

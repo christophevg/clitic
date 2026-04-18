@@ -82,3 +82,8 @@ Button:focus {
 Conversation.paused {
   border-top: thick $warning;
 }
+
+/* Conversation block selection indicator */
+Conversation.selected {
+  /* Selection is rendered inline with role colors */
+}

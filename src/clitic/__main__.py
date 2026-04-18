@@ -63,6 +63,13 @@ class ShowcaseApp(App):
   }
   """
 
+  # Global key bindings that work from any focused widget
+  BINDINGS = [
+    ("alt+up", "nav_prev_block", "Previous message"),
+    ("alt+down", "nav_next_block", "Next message"),
+    ("escape", "deselect_block", "Clear selection"),
+  ]
+
   def __init__(self, conversation: Conversation | None = None) -> None:
     """Initialize the showcase app.
 
@@ -101,6 +108,21 @@ class ShowcaseApp(App):
 
     # Demonstrate block retrieval
     self.query_one(InputBar).focus()
+
+  def action_nav_prev_block(self) -> None:
+    """Navigate to previous block in conversation (global binding)."""
+    conversation = self.query_one(Conversation)
+    conversation.action_nav_prev_block()
+
+  def action_nav_next_block(self) -> None:
+    """Navigate to next block in conversation (global binding)."""
+    conversation = self.query_one(Conversation)
+    conversation.action_nav_next_block()
+
+  def action_deselect_block(self) -> None:
+    """Clear selection in conversation (global binding)."""
+    conversation = self.query_one(Conversation)
+    conversation.action_deselect_block()
 
   def on_input_bar_submit(self, event: InputBar.Submit) -> None:
     """Handle InputBar submit.

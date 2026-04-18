@@ -136,9 +136,15 @@ class Conversation(ScrollView):
     ("pagedown", "page_down", "Page down"),
     ("home", "scroll_home", "To start"),
     ("end", "scroll_end", "To end"),
+    ("alt+up", "nav_prev_block", "Previous message"),
+    ("alt+down", "nav_next_block", "Next message"),
+    ("escape", "deselect_block", "Clear selection"),
   ]
 
   auto_scroll = reactive(True)
+  selected_block: reactive[str | None] = reactive(None)
+  wrap_navigation: reactive[bool] = reactive(True)
+  navigation_bell: reactive[bool] = reactive(True)
 
   def __init__(
     self,
@@ -148,6 +154,8 @@ class Conversation(ScrollView):
     persistence_enabled: bool = False,
     session_dir: Path | None = None,
     max_blocks_in_memory: int = 100,
+    wrap_navigation: bool = True,
+    navigation_bell: bool = True,
     name: str | None = None,
     id: str | None = None,  # noqa: A002
     classes: str | None = None,
@@ -164,6 +172,8 @@ class Conversation(ScrollView):
         max_blocks_in_memory: Maximum blocks to keep in memory (0 = unlimited).
             When exceeded, oldest blocks are pruned from memory but remain
             in the session file. Default: 100.
+        wrap_navigation: Whether navigation wraps at boundaries. Default: True.
+        navigation_bell: Whether to play bell at boundaries. Default: True.
         name: Name of the widget.
         id: ID of the widget.
         classes: Space-separated CSS classes.
@@ -182,8 +192,12 @@ class Conversation(ScrollView):
     self._max_blocks_in_memory: int = max_blocks_in_memory
     self._pruned_blocks: dict[int, tuple[str, int]] = {}  # sequence -> (block_id, line_count)
     self._is_loading: bool = False
+    # Navigation state
+    self._selected_index: int = -1  # -1 means no selection
     super().__init__(name=name, id=id, classes=classes, disabled=disabled)
     self.auto_scroll = auto_scroll
+    self.wrap_navigation = wrap_navigation
+    self.navigation_bell = navigation_bell
 
     # Initialize session manager if persistence is enabled
     if persistence_enabled:
@@ -407,28 +421,46 @@ class Conversation(ScrollView):
       self._is_loading = False
       self.remove_class("loading")
 
-  def _render_block_to_strips(self, block: _BlockData, width: int) -> list[Strip]:
+  def _render_block_to_strips(
+    self, block: _BlockData, width: int, is_selected: bool = False
+  ) -> list[Strip]:
     """Render a block's content to a list of Strips.
 
     Args:
         block: The block data to render.
         width: The width to render at (for text wrapping).
+        is_selected: Whether this block is currently selected.
 
     Returns:
         List of Strip objects, one per line.
     """
     # Create the styled text based on role
     if block.info.role == "user":
-      text = Text(f"[You] {block.info.content}", style=Style(bold=True, color="blue"))
+      base_style = Style(bold=True, color="blue")
     elif block.info.role == "assistant":
-      text = Text(f"[Assistant] {block.info.content}", style=Style(bold=True, color="green"))
+      base_style = Style(bold=True, color="green")
     elif block.info.role == "system":
-      text = Text(f"[System] {block.info.content}", style=Style(bold=True, color="yellow"))
+      base_style = Style(bold=True, color="yellow")
     elif block.info.role == "tool":
-      text = Text(f"[Tool] {block.info.content}", style=Style(bold=True, color="magenta"))
+      base_style = Style(bold=True, color="magenta")
     else:
       # Default styling for unknown roles
-      text = Text(f"[{block.info.role}] {block.info.content}", style=Style(bold=True, color="grey62"))
+      base_style = Style(bold=True, color="grey62")
+
+    # Selection uses cyan color to highlight the block
+    if is_selected:
+      style = Style(bold=True, color="cyan")
+    else:
+      style = base_style
+
+    role_label = {
+      "user": "You",
+      "assistant": "Assistant",
+      "system": "System",
+      "tool": "Tool",
+    }.get(block.info.role, block.info.role)
+
+    text = Text(f"[{role_label}] {block.info.content}", style=style)
 
     # Wrap the text to the available width
     # Using renderables requires converting to lines
@@ -462,8 +494,9 @@ class Conversation(ScrollView):
     self._cumulative_heights.clear()
     self._total_lines = 0
 
-    for block in self._blocks:
-      block_strips = self._render_block_to_strips(block, width)
+    for i, block in enumerate(self._blocks):
+      is_selected = (i == self._selected_index)
+      block_strips = self._render_block_to_strips(block, width, is_selected=is_selected)
       block.line_count = len(block_strips)
       self._strips.extend(block_strips)
       self._total_lines += block.line_count
@@ -707,6 +740,9 @@ class Conversation(ScrollView):
     self._total_lines = 0
     self._last_width = 0
     self.virtual_size = Size(0, 0)
+    # Reset selection state
+    self._selected_index = -1
+    self.selected_block = None
     self.refresh()
 
   @property
@@ -717,6 +753,28 @@ class Conversation(ScrollView):
         The number of content blocks.
     """
     return len(self._blocks)
+
+  @property
+  def selected_block_index(self) -> int | None:
+    """Return the 0-indexed position of the selected block.
+
+    Returns:
+        The index of the selected block, or None if no selection.
+    """
+    if self._selected_index < 0:
+      return None
+    return self._selected_index
+
+  @property
+  def selected_block_info(self) -> BlockInfo | None:
+    """Return the BlockInfo for the selected block.
+
+    Returns:
+        The BlockInfo if a block is selected, None otherwise.
+    """
+    if self._selected_index < 0 or self._selected_index >= len(self._blocks):
+      return None
+    return self._blocks[self._selected_index].info
 
   def get_block(self, block_id: str) -> BlockInfo | None:
     """Get block by ID. O(1) performance for in-memory blocks.
@@ -805,6 +863,175 @@ class Conversation(ScrollView):
   def action_scroll_end(self) -> None:
     """Scroll to the end of the conversation."""
     self.scroll_end()
+
+  def action_nav_prev_block(self) -> None:
+    """Navigate to the previous block (Alt+Up).
+
+    Selects the previous message block. If no block is selected,
+    selects the last block. At the first block, wraps to the last
+    block if wrap_navigation is True, otherwise plays a bell.
+    """
+    if not self._blocks:
+      return
+
+    # If no selection, select the last block
+    if self._selected_index < 0:
+      self._selected_index = len(self._blocks) - 1
+      self.selected_block = self._blocks[self._selected_index].info.block_id
+      self._update_selected_visual()
+      self.call_after_refresh(self._scroll_to_selected)
+      return
+
+    # If at first block
+    if self._selected_index == 0:
+      if self.wrap_navigation:
+        # Check for pruned blocks before wrapping
+        if self._pruned_blocks and self._session_manager is not None:
+          # Try to load pruned block
+          min_sequence = min(self._pruned_blocks.keys())
+          if self._restore_pruned_blocks(min_sequence, count=1):
+            # After restoration, the new block is at index 0
+            # We need to find it and adjust selection
+            self._selected_index = 0
+            self.selected_block = self._blocks[0].info.block_id
+            self._update_selected_visual()
+            self.call_after_refresh(self._scroll_to_selected)
+            return
+
+        # Wrap to last block
+        self._selected_index = len(self._blocks) - 1
+        self.selected_block = self._blocks[self._selected_index].info.block_id
+        self._update_selected_visual()
+        self.call_after_refresh(self._scroll_to_selected)
+      else:
+        # Bell at boundary
+        if self.navigation_bell:
+          try:
+            self.app.bell()
+          except NoActiveAppError:
+            pass
+      return
+
+    # Move to previous block
+    self._selected_index -= 1
+    self.selected_block = self._blocks[self._selected_index].info.block_id
+    self._update_selected_visual()
+    self.call_after_refresh(self._scroll_to_selected)
+
+  def action_nav_next_block(self) -> None:
+    """Navigate to the next block (Alt+Down).
+
+    Selects the next message block. If no block is selected,
+    selects the first block. At the last block, wraps to the first
+    block if wrap_navigation is True, otherwise plays a bell.
+    """
+    if not self._blocks:
+      return
+
+    # If no selection, select the first block
+    if self._selected_index < 0:
+      self._selected_index = 0
+      self.selected_block = self._blocks[0].info.block_id
+      self._update_selected_visual()
+      self.call_after_refresh(self._scroll_to_selected)
+      return
+
+    # If at last block
+    if self._selected_index >= len(self._blocks) - 1:
+      if self.wrap_navigation:
+        # Wrap to first block
+        self._selected_index = 0
+        self.selected_block = self._blocks[0].info.block_id
+        self._update_selected_visual()
+        self.call_after_refresh(self._scroll_to_selected)
+      else:
+        # Bell at boundary
+        if self.navigation_bell:
+          try:
+            self.app.bell()
+          except NoActiveAppError:
+            pass
+      return
+
+    # Move to next block
+    self._selected_index += 1
+    self.selected_block = self._blocks[self._selected_index].info.block_id
+    self._update_selected_visual()
+    self.call_after_refresh(self._scroll_to_selected)
+
+  def action_deselect_block(self) -> None:
+    """Clear the block selection (Escape)."""
+    self._selected_index = -1
+    self.selected_block = None
+    self._update_selected_visual()
+
+  def watch_selected_block(self, old: str | None, new: str | None) -> None:
+    """React to selected_block changes.
+
+    Args:
+        old: Previous selected block ID.
+        new: New selected block ID.
+    """
+    if new is None:
+      self._selected_index = -1
+    else:
+      # Find block by ID in _block_index
+      if new in self._block_index:
+        self._selected_index = self._block_index[new]
+      else:
+        # Block not found - clear selection
+        self._selected_index = -1
+    self._update_selected_visual()
+
+  def _update_selected_visual(self) -> None:
+    """Update visual state for selection change.
+
+    Re-renders strips to apply selection highlighting.
+    """
+    if self._blocks and self._last_width > 0:
+      self._rerender_all_blocks()
+      self.refresh()
+
+  async def _scroll_to_selected(self) -> None:
+    """Scroll to center the selected block in the viewport."""
+    if self._selected_index < 0 or not self._blocks:
+      return
+
+    # Get the line range for the selected block
+    if self._selected_index >= len(self._cumulative_heights):
+      return
+
+    # Calculate block's start line
+    if self._selected_index == 0:
+      block_start_line = 0
+    else:
+      block_start_line = self._cumulative_heights[self._selected_index - 1]
+
+    # Calculate block's end line
+    block_end_line = self._cumulative_heights[self._selected_index]
+
+    # Calculate block height
+    block_height = block_end_line - block_start_line
+
+    # Get viewport height
+    region = self.scrollable_content_region
+    if region is None:
+      return
+    viewport_height = region.height
+
+    # Calculate center position
+    # We want the block to be centered if possible
+    center_y = block_start_line + (block_height / 2) - (viewport_height / 2)
+
+    # Clamp to valid range
+    max_y = max(0, self._total_lines - viewport_height)
+    target_y = max(0, min(center_y, max_y))
+
+    try:
+      self.scroll_to(y=int(target_y), animate=True, duration=0.2)
+    except NoActiveAppError:
+      # Widget not mounted - can't scroll
+      pass
 
   @classmethod
   def resume(

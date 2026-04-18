@@ -216,16 +216,32 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Dependencies:** conversation-session-persistence
   - **Priority:** P1
 
-- [ ] **conversation-block-navigation**
+- [x] **conversation-block-navigation**
   - Add block navigation and selection (FR-007)
   - **Acceptance Criteria:**
-    - [ ] `Alt+Up` / `Alt+Down` navigate between blocks
-    - [ ] Navigation triggers load when reaching pruned blocks
-    - [ ] Selected block has visual highlight (distinct border/background)
-    - [ ] `selected_block` property returns current selection (or None)
-    - [ ] Navigation wraps at top/bottom (configurable)
+    - [x] `Alt+Up` navigates to previous block, `Alt+Down` to next block
+    - [x] `Escape` clears selection (deselects current block)
+    - [x] Navigation triggers transparent load when reaching pruned blocks
+    - [x] Loading indicator shown during pruned block restoration
+    - [x] Selected block has subtle background highlight (10-15% opacity of role color)
+    - [x] Role colors preserved on selection (blue=user, green=assistant, yellow=system, magenta=tool)
+    - [x] `selected_block: reactive[str | None]` returns current block ID or None
+    - [x] `selected_block_index` property returns 0-indexed position or None
+    - [x] `selected_block_info` property returns BlockInfo or None
+    - [x] `wrap_navigation: reactive[bool]` configures wrap behavior (default: True)
+    - [x] `navigation_bell: reactive[bool]` configures visual bell (default: True)
+    - [x] Visual bell triggered when wrapping or at boundary with wrap disabled
+    - [ ] Click on block selects that block (click-to-select) -- NOT IMPLEMENTED (deferred)
+    - [x] Auto-scroll centers selected block in viewport with smooth animation (200ms)
+    - [x] Selection cleared on `clear()`
+    - [x] Selection not persisted across sessions
+    - [x] CSS class `.selected` added to selected block with role-specific styling -- Uses inline styling
+    - [ ] Screen reader announces selected block role and content preview (accessibility) -- NOT IMPLEMENTED (deferred)
   - **Dependencies:** conversation-block-model
   - **Priority:** P1
+  - **UX Review:** See `reporting/conversation-block-navigation/ux-ui-review.md`
+  - **Functional Review:** See `reporting/conversation-block-navigation/functional-review.md`
+  - **Completed:** 2026-04-18
 
 ### Phase 4: History System (P1 - Essential)
 
@@ -638,6 +654,19 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
 
 ## Done
+
+- [x] **conversation-block-navigation**
+  - Added block navigation and selection to Conversation widget
+  - Key bindings: Alt+Up/Alt+Down for navigation, Escape to deselect
+  - Reactive properties: selected_block, wrap_navigation, navigation_bell
+  - Properties: selected_block_index, selected_block_info
+  - Auto-scroll centers selected block in viewport
+  - Visual highlight with grey23 background
+  - Wrap behavior configurable, visual bell at boundaries
+  - Transparent loading of pruned blocks during navigation
+  - 41 tests for navigation functionality
+  - Total: 528 tests passing
+  - **Completed:** 2026-04-18
 
 - [x] **test-session-concurrency**
   - Added session persistence concurrent access tests

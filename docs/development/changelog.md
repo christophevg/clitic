@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Block Navigation**: Navigate between conversation blocks with keyboard
+  - Alt+Up/Down to select previous/next block
+  - Escape to clear selection
+  - Cyan highlighting for selected blocks
+  - Auto-scroll centers selected block in viewport
+  - Configurable wrap behavior and visual bell
+  - Transparent loading of pruned blocks during navigation
 - `BlockInfo` frozen dataclass for immutable block information
   - `block_id`: Unique identifier with session UUID prefix
   - `role`: Message role (user, assistant, system, tool)
@@ -22,12 +29,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Conversation.get_block_at_index(index)` method for O(1) block lookup by position
 - `Conversation.append()` now accepts optional `metadata` parameter
 - `Conversation.__init__` now accepts optional `session_uuid` parameter
+- `Conversation` navigation properties:
+  - `selected_block`: Reactive property for selected block ID
+  - `selected_block_index`: 0-indexed position of selected block
+  - `selected_block_info`: BlockInfo for selected block
+  - `wrap_navigation`: Configurable wrap at boundaries
+  - `navigation_bell`: Configurable visual bell at boundaries
 
 ### Changed
 
 - Block ID format changed from `block-{counter}` to `{session_uuid}-{sequence}`
 - `Conversation.clear()` no longer resets the sequence counter
 - Sequence counter continues incrementing across clear operations
+- Selected blocks now display in cyan without background highlighting
 
 ## [0.1.0] - 2026-04-11
 
