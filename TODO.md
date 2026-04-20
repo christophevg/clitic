@@ -1,12 +1,5 @@
 # TODO
 
-## Inbox Input (2026-04-20)
-
-*Unstructured input from inbox processing session. To be refined and integrated.*
-
-- clitic: doesn't include latest screenshot in docs documentation
-- Textual assessment: keep a close eye on Textual — avoid spinning down rabbit hole that doesn't produce what's needed. Consider: what triggers abandoning Textual? What alternatives?
-
 ## Backlog
 
 ### Testing Coverage Improvements
@@ -674,6 +667,14 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
 
 ## Done
+
+- [x] **fix-docs-screenshot**
+  - Fixed outdated screenshot in documentation
+  - Updated `make screenshot` to copy to `docs/_static/current-showcase.png`
+  - Docs build (`make docs`) now includes current screenshot
+  - All acceptance criteria verified
+  - 597 tests passing
+  - **Completed:** 2026-04-20
 
 - [x] **history-navigation**
   - Added history parameter to InputBar for optional HistoryManager

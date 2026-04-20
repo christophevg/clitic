@@ -91,6 +91,7 @@ NOW := $(shell date +"%Y%m%d-%H%M%S")
 screenshot:
 	screencapture -iW media/current-showcase-${NOW}.png
 	cp media/current-showcase-${NOW}.png media/current-showcase.png
+	cp media/current-showcase-${NOW}.png docs/_static/current-showcase.png
 
 ## Documentation
 
