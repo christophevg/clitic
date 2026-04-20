@@ -7,10 +7,12 @@ from clitic.core import App
 from clitic.exceptions import (
     CliticError,
     ConfigurationError,
+    HistoryError,
     PluginError,
     RenderError,
     SessionError,
 )
+from clitic.history import DEFAULT_HISTORY_FILE, HistoryEntry, HistoryManager
 from clitic.plugins import (
     ContentPlugin,
     Highlighter,
@@ -24,28 +26,33 @@ from clitic.widgets.conversation import BlockInfo
 __version__ = "0.1.0"
 
 __all__ = [
-    "__version__",
-    # Core
-    "App",
-    # Exceptions
-    "CliticError",
-    "ConfigurationError",
-    "PluginError",
-    "RenderError",
-    "SessionError",
-    # Plugin base classes
-    "ContentPlugin",
-    "Highlighter",
-    "ModeProvider",
-    "Renderable",
-    # Completion base classes
-    "Completion",
-    "CompletionProvider",
-    # Session management
-    "SessionInfo",
-    "SessionManager",
-    # Widgets
-    "BlockInfo",
-    "Conversation",
-    "InputBar",
+  "__version__",
+  # Core
+  "App",
+  # Exceptions
+  "CliticError",
+  "ConfigurationError",
+  "HistoryError",
+  "PluginError",
+  "RenderError",
+  "SessionError",
+  # History management
+  "DEFAULT_HISTORY_FILE",
+  "HistoryEntry",
+  "HistoryManager",
+  # Plugin base classes
+  "ContentPlugin",
+  "Highlighter",
+  "ModeProvider",
+  "Renderable",
+  # Completion base classes
+  "Completion",
+  "CompletionProvider",
+  # Session management
+  "SessionInfo",
+  "SessionManager",
+  # Widgets
+  "BlockInfo",
+  "Conversation",
+  "InputBar",
 ]

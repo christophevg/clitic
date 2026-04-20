@@ -5,6 +5,7 @@
 *Unstructured input from inbox processing session. To be refined and integrated.*
 
 - clitic: doesn't include latest screenshot in docs documentation
+- Textual assessment: keep a close eye on Textual — avoid spinning down rabbit hole that doesn't produce what's needed. Consider: what triggers abandoning Textual? What alternatives?
 
 ## Backlog
 
@@ -252,28 +253,30 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
 
 ### Phase 4: History System (P1 - Essential)
 
-- [ ] **history-storage**
+- [x] **history-storage**
   - Create JSON Lines storage format (FR-003)
   - **Acceptance Criteria:**
-    - [ ] `src/clitic/history/manager.py` exists with HistoryManager class
-    - [ ] JSON Lines format with timestamp, text, metadata
-    - [ ] Configurable history file path
-    - [ ] Append-only writes for durability
-    - [ ] Load history from file on initialization
-    - [ ] Unit tests for storage format
+    - [x] `src/clitic/history/manager.py` exists with HistoryManager class
+    - [x] JSON Lines format with timestamp, text, metadata
+    - [x] Configurable history file path
+    - [x] Append-only writes for durability
+    - [x] Load history from file on initialization
+    - [x] Unit tests for storage format
   - **Dependencies:** None
   - **Priority:** P1
+  - **Completed:** 2026-04-20
 
-- [ ] **history-navigation**
+- [x] **history-navigation**
   - Add history navigation in InputBar (FR-003)
   - **Acceptance Criteria:**
-    - [ ] Up arrow at cursor start navigates to previous entry
-    - [ ] Down arrow at cursor end navigates to next entry
-    - [ ] Draft preserved when navigating (saved/restored)
-    - [ ] HistoryManager integrated with InputBar
-    - [ ] Integration tests for navigation
+    - [x] Up arrow at cursor start navigates to previous entry
+    - [x] Down arrow at cursor end navigates to next entry
+    - [x] Draft preserved when navigating (saved/restored)
+    - [x] HistoryManager integrated with InputBar
+    - [x] Integration tests for navigation
   - **Dependencies:** history-storage, inputbar-basic
   - **Priority:** P1
+  - **Completed:** 2026-04-20
 
 ### Phase 5: Content Plugins (P1 - Essential)
 
@@ -610,6 +613,16 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
 
 ### Phase 10: Documentation (P2 - Important)
 
+- [ ] **docs-screenshot-sync**
+  - Sync captured screenshots to documentation source
+  - **Acceptance Criteria:**
+    - [ ] `make screenshot` copies captured screenshot to `docs/_static/current-showcase.png`
+    - [ ] Documentation builds include the latest screenshot from showcase
+    - [ ] `media/current-showcase.png` is maintained for backwards compatibility
+    - [ ] `docs/_build/html/_static/current-showcase.png` reflects the latest screenshot after `make docs`
+  - **Dependencies:** showcase-application
+  - **Priority:** P2
+
 - [ ] **docstrings**
   - Add docstrings for all public APIs (NFR-008)
   - **Acceptance Criteria:**
@@ -661,6 +674,32 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
 
 ## Done
+
+- [x] **history-navigation**
+  - Added history parameter to InputBar for optional HistoryManager
+  - Up arrow at cursor start navigates to previous history entry
+  - Down arrow at cursor end navigates to next history entry
+  - Draft text preserved when navigating history
+  - Submit adds text to history and resets navigation state
+  - HistoryManager instance shared via InputBar constructor
+  - Showcase updated to use HistoryManager
+  - 14 integration tests for history navigation
+  - Total: 609 tests passing
+  - **Completed:** 2026-04-20
+
+- [x] **history-storage**
+  - Created HistoryEntry dataclass and HistoryManager class
+  - JSON Lines storage format with timestamp, text, metadata
+  - Configurable history file path (default: ~/.local/share/clitic/history.jsonl)
+  - Append-only writes with flush + fsync for durability
+  - Load history from file on initialization
+  - Navigation methods: get_previous(), get_next(), reset_navigation()
+  - Search methods: search(), search_prefix()
+  - Thread-safe with threading.RLock
+  - HistoryError exception following project patterns
+  - Exported from public API
+  - 51 unit tests passing
+  - **Completed:** 2026-04-20
 
 - [x] **test-pruning-edge-cases**
   - Added Conversation memory pruning edge case tests

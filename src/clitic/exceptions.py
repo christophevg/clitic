@@ -229,3 +229,45 @@ class SessionError(CliticError):
             f"SessionError(session_id={self.session_id!r}, "
             f"operation={self.operation!r}, message={self._message!r})"
         )
+
+
+class HistoryError(CliticError):
+    """Exception for history-related issues.
+
+    Raised when a history operation fails (load, save, clear).
+
+    Attributes:
+        operation: The operation that failed (e.g., 'load', 'save', 'clear').
+
+    Example:
+        raise HistoryError(
+            operation="save",
+            message="Failed to write history entry"
+        )
+    """
+
+    def __init__(
+        self,
+        operation: str = "unknown",
+        message: str | None = None,
+    ) -> None:
+        """Initialize HistoryError.
+
+        Args:
+            operation: The operation that failed.
+            message: Optional additional context for the error.
+        """
+        self.operation = operation
+        self._message = message
+        super().__init__(str(self))
+
+    def __str__(self) -> str:
+        """Format the error message with operation context."""
+        base = f"History error during {self.operation}"
+        if self._message:
+            return f"{base}: {self._message}"
+        return f"{base}."
+
+    def __repr__(self) -> str:
+        """Return a detailed representation for debugging."""
+        return f"HistoryError(operation={self.operation!r}, message={self._message!r})"

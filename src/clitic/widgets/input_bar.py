@@ -7,10 +7,15 @@ behavior for submission.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from textual.events import Key
 from textual.geometry import Size
 from textual.message import Message
 from textual.widgets import TextArea
+
+if TYPE_CHECKING:
+    from clitic.history import HistoryManager
 
 
 class InputBar(TextArea):
@@ -23,19 +28,24 @@ class InputBar(TextArea):
     grows up to a configurable maximum height, with internal scrolling for longer
     content.
 
+    History navigation is supported via Up/Down arrow keys when the cursor is
+    at the start (Up) or end (Down) of the text. This requires a HistoryManager
+    instance to be provided.
+
     Attributes:
         Submit: Message class emitted when input is submitted.
         max_height: Maximum height in lines for auto-grow (default: 10).
         submit_on_enter: Whether Enter key submits (default: True).
+        history: Optional HistoryManager for command history.
 
     Example:
         ```python
         from textual.app import App, ComposeResult
-        from clitic import InputBar
+        from clitic import InputBar, HistoryManager
 
         class MyApp(App):
             def compose(self) -> ComposeResult:
-                yield InputBar()
+                yield InputBar(history=HistoryManager())
 
             def on_input_bar_submit(self, message: InputBar.Submit) -> None:
                 print(f"Submitted: {message.text}")
@@ -80,6 +90,7 @@ class InputBar(TextArea):
         max_height: int = 10,
         language: str | None = None,
         theme: str = "monokai",
+        history: HistoryManager | None = None,
         name: str | None = None,
         id: str | None = None,  # noqa: A002
         classes: str | None = None,
@@ -97,6 +108,9 @@ class InputBar(TextArea):
             max_height: Maximum height in lines for auto-grow (default: 10).
             language: Language for syntax highlighting (default: None).
             theme: Theme for syntax highlighting (default: "monokai").
+            history: Optional HistoryManager for command history navigation.
+                When provided, Up arrow at cursor start navigates to previous
+                history entry, and Down arrow at cursor end navigates to next.
             name: Name of the widget.
             id: ID of the widget.
             classes: Space-separated CSS classes.
@@ -106,6 +120,9 @@ class InputBar(TextArea):
         """
         self._submit_on_enter = submit_on_enter
         self._max_height = max_height
+        self._history = history
+        self._history_cursor: int = -1  # -1 = current position (not browsing)
+        self._draft: str = ""  # Saved text when navigating history
         super().__init__(
             text,
             language=language,
@@ -179,11 +196,18 @@ class InputBar(TextArea):
         """Submit the current text content.
 
         Emits a Submit message if the text is not empty, then clears the input.
+        If a HistoryManager is configured, the submitted text is added to history.
         """
         current_text = self.text
         if current_text.strip():
+            # Add to history if configured
+            if self._history is not None:
+                self._history.add(current_text)
             self.post_message(self.Submit(current_text))
             self.clear_text()
+            # Reset history navigation state
+            self._history_cursor = -1
+            self._draft = ""
 
     def action_submit_input(self) -> None:
         """Handle Enter key action."""
@@ -205,6 +229,10 @@ class InputBar(TextArea):
           Shift+Enter: submit the text.
           Enter: insert newline (default TextArea behavior).
 
+        History navigation (when HistoryManager is configured):
+          Up arrow at cursor start: navigate to previous history entry.
+          Down arrow at cursor end: navigate to next history entry.
+
         Note: Shift+Enter detection requires terminal support for the Kitty
         keyboard protocol. Terminals without this support will treat Enter
         and Shift+Enter identically.
@@ -215,6 +243,21 @@ class InputBar(TextArea):
         # Don't process keys if widget is disabled
         if self.disabled:
             return
+
+        # Handle history navigation
+        if self._history is not None:
+            if event.key == "up":
+                if self.cursor_at_start_of_text:
+                    self._navigate_history_backward()
+                    event.stop()
+                    event.prevent_default()
+                    return
+            elif event.key == "down":
+                if self.cursor_at_end_of_text:
+                    self._navigate_history_forward()
+                    event.stop()
+                    event.prevent_default()
+                    return
 
         # Handle Enter key variants
         if "enter" in event.key:
@@ -237,3 +280,44 @@ class InputBar(TextArea):
                     self.submit()
                     return
                 # plain enter passes through for newline insertion by TextArea
+
+    def _navigate_history_backward(self) -> None:
+        """Navigate to the previous (older) history entry.
+
+        Called when Up arrow is pressed at cursor start.
+        Saves current text as draft before navigating.
+        """
+        if self._history is None:
+            return
+
+        # Save current text as draft on first navigation
+        if self._history_cursor == -1:
+            self._draft = self.text
+
+        entry = self._history.get_previous()
+        if entry is not None:
+            self.text = entry.text
+            # Move cursor to end after loading history entry
+            self.move_cursor(self.document.end)
+
+    def _navigate_history_forward(self) -> None:
+        """Navigate to the next (newer) history entry.
+
+        Called when Down arrow is pressed at cursor end.
+        Restores draft when reaching the current position.
+        """
+        if self._history is None:
+            return
+
+        entry = self._history.get_next()
+        if entry is not None:
+            self.text = entry.text
+            # Move cursor to end after loading history entry
+            self.move_cursor(self.document.end)
+        else:
+            # Reached current position, restore draft
+            self.text = self._draft
+            self._history.reset_navigation()
+            self._history_cursor = -1
+            # Move cursor to end
+            self.move_cursor(self.document.end)

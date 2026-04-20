@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 from textual.app import ComposeResult
 from textual.widgets import Footer, Header
 
-from clitic import App, Conversation, InputBar, __version__
+from clitic import App, Conversation, HistoryManager, InputBar, __version__
 
 if TYPE_CHECKING:
     pass
@@ -79,6 +79,7 @@ class ShowcaseApp(App):
         super().__init__(title=f"clitic v{__version__} Showcase")
         self._message_count = 0
         self._conversation = conversation
+        self._history = HistoryManager()
 
     def compose(self) -> ComposeResult:
         """Compose the app layout."""
@@ -88,7 +89,11 @@ class ShowcaseApp(App):
         else:
             yield Conversation(id="messages")
         # Note: Use submit_on_enter=False to make Shift+Enter submit and Enter insert newline
-        yield InputBar(placeholder="Type your message here...", theme="github_light")
+        yield InputBar(
+            placeholder="Type your message here...",
+            theme="github_light",
+            history=self._history,
+        )
         yield Footer()
 
     def on_mount(self) -> None:
