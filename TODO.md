@@ -78,14 +78,15 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
   - **Completed:** 2026-04-20
 
-- [ ] **test-app-theme-css** (Priority: 6/10 - Important)
+- [x] **test-app-theme-css** (Priority: 6/10 - Important)
   - Add App theme loading and CSS path tests
   - **Acceptance Criteria:**
-    - [ ] Tests for CSS_PATH loading
-    - [ ] Tests for theme integration
-    - [ ] Tests for `_theme_name` property with TCSS files
+    - [x] Tests for CSS_PATH loading
+    - [x] Tests for theme integration
+    - [x] Tests for `_theme_name` property with TCSS files
   - **Dependencies:** test-conftest-py
   - **Priority:** P2
+  - **Completed:** 2026-04-20
 
 - [ ] **test-conversation-render-errors** (Priority: 6/10 - Important)
   - Add Conversation render_line error handling tests
@@ -668,6 +669,17 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
 
 ## Done
+
+- [x] **test-app-theme-css**
+  - Created tests for App CSS_PATH and theme configuration
+  - 16 tests covering CSS_PATH loading, theme_name property, and integration
+  - Tests verify CSS_PATH is correctly configured via importlib.resources
+  - Tests verify theme_name property getter and read-only behavior
+  - Tests document current behavior: theme switching NOT implemented
+  - Includes xfail test marking desired future behavior
+  - All acceptance criteria verified
+  - 647 tests passing, 85% coverage
+  - **Completed:** 2026-04-20
 
 - [x] **test-inputbar-theme-language**
   - Created tests for InputBar theme and language parameters
