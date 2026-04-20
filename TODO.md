@@ -68,14 +68,15 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
   - **Completed:** 2026-04-20
 
-- [ ] **test-inputbar-theme-language** (Priority: 6/10 - Important)
+- [x] **test-inputbar-theme-language** (Priority: 6/10 - Important)
   - Add InputBar theme and language parameter tests
   - **Acceptance Criteria:**
-    - [ ] Tests for syntax highlighting with different languages
-    - [ ] Tests for theme parameter behavior
-    - [ ] Tests for language switching
+    - [x] Tests for syntax highlighting with different languages
+    - [x] Tests for theme parameter behavior
+    - [x] Tests for language switching
   - **Dependencies:** test-conftest-py
   - **Priority:** P2
+  - **Completed:** 2026-04-20
 
 - [ ] **test-app-theme-css** (Priority: 6/10 - Important)
   - Add App theme loading and CSS path tests
@@ -667,6 +668,15 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
 
 ## Done
+
+- [x] **test-inputbar-theme-language**
+  - Created tests for InputBar theme and language parameters
+  - 35 tests covering theme parameter, language parameter, and language switching
+  - Tests verify parameter pass-through to Textual's TextArea widget
+  - Tests document actual behavior: language changes reset cursor position
+  - All acceptance criteria verified
+  - 632 tests passing, 85% coverage
+  - **Completed:** 2026-04-20
 
 - [x] **fix-docs-screenshot**
   - Fixed outdated screenshot in documentation
