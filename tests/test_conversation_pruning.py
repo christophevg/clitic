@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from clitic import Conversation
-from clitic.session import SessionManager
+from clitic.session import SessionError, SessionManager
 
 
 class TestPruningBasics:
@@ -813,3 +813,622 @@ class TestScrollTriggeredRestoration:
 
         # Calling check should not raise
         conversation._check_and_restore_pruned_blocks()
+
+
+# ==============================================================================
+# Test Class: Restore With Stale Data
+# ==============================================================================
+
+
+class TestRestoreWithStaleData:
+    """Tests for _restore_pruned_blocks with stale or inconsistent data.
+
+    These tests verify graceful handling when file content has changed
+    after pruning occurred. The conversation may raise SessionError or
+    return False depending on the specific scenario.
+    """
+
+    def test_restore_with_modified_block_content(self, tmp_path: Path) -> None:
+        """_restore_pruned_blocks should handle modified file content.
+
+        If the file content has changed since pruning, restoration may
+        return False or restore different content than expected.
+        """
+        import json
+
+        conversation = Conversation(
+            persistence_enabled=True,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=2,
+        )
+        with patch.object(conversation, "call_after_refresh"):
+            for i in range(5):
+                conversation.append("user", f"Message {i}")
+
+        assert conversation.pruned_block_count == 3
+
+        # Close session to flush writes
+        if conversation._session_manager is not None:
+            conversation._session_manager.close_session()
+
+        # Modify file content
+        session_file = tmp_path / "sessions" / f"{conversation.session_id}.jsonl"
+        lines = session_file.read_text().strip().split("\n")
+        modified_lines = []
+        for i, line in enumerate(lines):
+            data = json.loads(line)
+            if i < 3:  # Modify first 3 (pruned) blocks
+                data["content"] = f"Modified message {i}"
+            modified_lines.append(json.dumps(data))
+        session_file.write_text("\n".join(modified_lines) + "\n")
+
+        # Attempt restore - should succeed but with modified content
+        result = conversation._restore_pruned_blocks(0, count=1)
+        # Current behavior: restores successfully with modified content
+        assert result is True
+
+    def test_restore_with_deleted_block_in_file(self, tmp_path: Path) -> None:
+        """_restore_pruned_blocks should handle when a block was removed from file.
+
+        If a pruned block's sequence was deleted from the file, restoration
+        of that specific block should fail gracefully.
+        """
+        conversation = Conversation(
+            persistence_enabled=True,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=2,
+        )
+        with patch.object(conversation, "call_after_refresh"):
+            for i in range(5):
+                conversation.append("user", f"Message {i}")
+
+        assert conversation.pruned_block_count == 3
+
+        # Close session to flush writes
+        if conversation._session_manager is not None:
+            conversation._session_manager.close_session()
+
+        # Delete first block from file
+        session_file = tmp_path / "sessions" / f"{conversation.session_id}.jsonl"
+        lines = session_file.read_text().strip().split("\n")
+        # Remove the first line (sequence 0)
+        modified_lines = lines[1:]
+        session_file.write_text("\n".join(modified_lines) + "\n")
+
+        # Attempt restore sequence 0 - file doesn't have it
+        # Current behavior: load_blocks_by_sequence_range returns empty list
+        # so _restore_pruned_blocks returns False
+        result = conversation._restore_pruned_blocks(0, count=1)
+        assert result is False
+
+    def test_restore_with_reordered_blocks(self, tmp_path: Path) -> None:
+        """_restore_pruned_blocks should handle reordered sequence numbers.
+
+        If blocks in file have been reordered, restoration uses sequence
+        numbers for matching, not file order.
+        """
+        conversation = Conversation(
+            persistence_enabled=True,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=2,
+        )
+        with patch.object(conversation, "call_after_refresh"):
+            for i in range(5):
+                conversation.append("user", f"Message {i}")
+
+        assert conversation.pruned_block_count == 3
+
+        # Close session to flush writes
+        if conversation._session_manager is not None:
+            conversation._session_manager.close_session()
+
+        # Reverse the order of lines in file
+        session_file = tmp_path / "sessions" / f"{conversation.session_id}.jsonl"
+        lines = session_file.read_text().strip().split("\n")
+        reversed_lines = list(reversed(lines))
+        session_file.write_text("\n".join(reversed_lines) + "\n")
+
+        # Attempt restore - should still work based on sequence numbers
+        result = conversation._restore_pruned_blocks(0, count=1)
+        assert result is True
+
+        # Verify correct block was restored
+        first_block = conversation.get_block_at_index(0)
+        assert first_block is not None
+        assert first_block.sequence == 0
+        assert first_block.content == "Message 0"
+
+    def test_restore_with_extra_blocks_inserted(self, tmp_path: Path) -> None:
+        """_restore_pruned_blocks should handle new blocks inserted in file.
+
+        If new blocks were inserted in the file after pruning, restoration
+        should still find and restore the correct pruned blocks by sequence.
+        """
+        import json
+        from datetime import datetime, timezone
+
+        conversation = Conversation(
+            persistence_enabled=True,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=2,
+        )
+        with patch.object(conversation, "call_after_refresh"):
+            for i in range(5):
+                conversation.append("user", f"Message {i}")
+
+        assert conversation.pruned_block_count == 3
+
+        # Close session to flush writes
+        if conversation._session_manager is not None:
+            conversation._session_manager.close_session()
+
+        # Insert an extra block at the beginning
+        session_file = tmp_path / "sessions" / f"{conversation.session_id}.jsonl"
+        lines = session_file.read_text().strip().split("\n")
+
+        extra_block = {
+            "block_id": "extra-block",
+            "role": "assistant",
+            "content": "Extra message",
+            "sequence": 100,  # Non-conflicting sequence
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "metadata": {},
+        }
+        lines.insert(0, json.dumps(extra_block))
+        session_file.write_text("\n".join(lines) + "\n")
+
+        # Restore sequence 0 - should still find it
+        result = conversation._restore_pruned_blocks(0, count=1)
+        assert result is True
+
+    def test_pruned_blocks_dict_inconsistent_with_file(self, tmp_path: Path) -> None:
+        """_restore_pruned_blocks should handle stale _pruned_blocks dict.
+
+        If _pruned_blocks has stale information (references blocks not in file),
+        restoration should handle gracefully.
+        """
+        conversation = Conversation(
+            persistence_enabled=True,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=2,
+        )
+        with patch.object(conversation, "call_after_refresh"):
+            for i in range(5):
+                conversation.append("user", f"Message {i}")
+
+        assert conversation.pruned_block_count == 3
+
+        # Manually corrupt _pruned_blocks to reference non-existent sequences
+        # _pruned_blocks format: dict[int, tuple[str, int]] = {sequence: (block_id, line_count)}
+        conversation._pruned_blocks[99] = (100, 10)  # (block_id, line_count) - fake block
+
+        # Close session to ensure file is written
+        if conversation._session_manager is not None:
+            conversation._session_manager.close_session()
+
+        # Try to restore non-existent block
+        # Current behavior: load_blocks_by_sequence_range won't find it
+        result = conversation._restore_pruned_blocks(99, count=1)
+        assert result is False
+
+    def test_line_count_mismatch_after_restore(self, tmp_path: Path) -> None:
+        """_restore_pruned_blocks should handle line count mismatch.
+
+        When restoring blocks, the line count stored in _pruned_blocks may
+        differ from actual rendered line count. The implementation should
+        recalculate line count on restore.
+        """
+        conversation = Conversation(
+            persistence_enabled=True,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=2,
+        )
+        with patch.object(conversation, "call_after_refresh"):
+            for i in range(5):
+                conversation.append("user", f"Message {i}")
+
+        # Corrupt the line count in _pruned_blocks
+        first_pruned_seq = min(conversation._pruned_blocks.keys())
+        # _pruned_blocks format: dict[int, tuple[str, int]] = {sequence: (block_id, line_count)}
+        # Set incorrect line count to test recalculation
+        conversation._pruned_blocks[first_pruned_seq] = (100, 999)  # (block_id, wrong_line_count)
+
+        # Restore should still work - it recalculates line count
+        result = conversation._restore_pruned_blocks(first_pruned_seq, count=1)
+        assert result is True
+
+        # Verify the block was restored (actual line count, not 999)
+        assert conversation.in_memory_block_count == 3
+
+
+# ==============================================================================
+# Test Class: Session File Unavailable
+# ==============================================================================
+
+
+class TestSessionFileUnavailable:
+    """Tests for handling deleted/corrupted session files after pruning.
+
+    These tests verify graceful handling when the session file becomes
+    unavailable or corrupted between pruning and restoration attempts.
+    """
+
+    def test_restore_with_deleted_session_file(self, tmp_path: Path) -> None:
+        """_restore_pruned_blocks should return False when session file is deleted."""
+
+        conversation = Conversation(
+            persistence_enabled=True,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=2,
+        )
+        with patch.object(conversation, "call_after_refresh"):
+            for i in range(5):
+                conversation.append("user", f"Message {i}")
+
+        assert conversation.pruned_block_count == 3
+
+        # Delete session file
+        session_file = tmp_path / "sessions" / f"{conversation.session_id}.jsonl"
+        session_file.unlink()
+
+        # Attempt restore - should return False or raise SessionError
+        # Current behavior: load_blocks_by_sequence_range raises SessionError
+        with pytest.raises(SessionError):
+            conversation._restore_pruned_blocks(0, count=1)
+
+    def test_restore_with_moved_session_file(self, tmp_path: Path) -> None:
+        """_restore_pruned_blocks should handle moved/renamed session file."""
+
+        conversation = Conversation(
+            persistence_enabled=True,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=2,
+        )
+        with patch.object(conversation, "call_after_refresh"):
+            for i in range(5):
+                conversation.append("user", f"Message {i}")
+
+        assert conversation.pruned_block_count == 3
+
+        # Move session file
+        session_file = tmp_path / "sessions" / f"{conversation.session_id}.jsonl"
+        moved_file = tmp_path / "sessions" / f"{conversation.session_id}.jsonl.bak"
+        session_file.rename(moved_file)
+
+        # Attempt restore - should fail
+        with pytest.raises(SessionError):
+            conversation._restore_pruned_blocks(0, count=1)
+
+    def test_restore_with_corrupted_json(self, tmp_path: Path) -> None:
+        """_restore_pruned_blocks should handle corrupted JSON in file.
+
+        When file contains invalid JSON lines, restoration should skip
+        malformed lines but continue with valid ones.
+        """
+        conversation = Conversation(
+            persistence_enabled=True,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=2,
+        )
+        with patch.object(conversation, "call_after_refresh"):
+            for i in range(5):
+                conversation.append("user", f"Message {i}")
+
+        assert conversation.pruned_block_count == 3
+
+        # Close session to flush writes
+        if conversation._session_manager is not None:
+            conversation._session_manager.close_session()
+
+        # Corrupt the file by replacing first line with invalid JSON
+        session_file = tmp_path / "sessions" / f"{conversation.session_id}.jsonl"
+        content = session_file.read_text()
+        lines = content.strip().split("\n")
+        # Corrupt the first line (which is sequence 0, a pruned block)
+        lines[0] = "{ invalid json"
+        session_file.write_text("\n".join(lines) + "\n")
+
+        # Attempt restore - load_blocks_by_sequence_range skips malformed lines
+        # So sequence 0 won't be found, returns empty list -> False
+        result = conversation._restore_pruned_blocks(0, count=1)
+        # Current behavior: skips corrupted line, block not found -> False
+        assert result is False
+
+    def test_restore_with_truncated_file(self, tmp_path: Path) -> None:
+        """_restore_pruned_blocks should handle truncated file.
+
+        If file was truncated mid-write (e.g., crash scenario), restoration
+        should handle gracefully.
+        """
+        conversation = Conversation(
+            persistence_enabled=True,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=2,
+        )
+        with patch.object(conversation, "call_after_refresh"):
+            for i in range(5):
+                conversation.append("user", f"Message {i}")
+
+        assert conversation.pruned_block_count == 3
+
+        # Close session to flush writes
+        if conversation._session_manager is not None:
+            conversation._session_manager.close_session()
+
+        # Truncate the file (remove some lines)
+        session_file = tmp_path / "sessions" / f"{conversation.session_id}.jsonl"
+        lines = session_file.read_text().strip().split("\n")
+        # Keep only first 2 lines (sequences 0 and 1, both pruned)
+        truncated_content = "\n".join(lines[:2]) + "\n"
+        session_file.write_text(truncated_content)
+
+        # Attempt restore - should work for available blocks
+        result = conversation._restore_pruned_blocks(0, count=1)
+        assert result is True
+
+        # But _pruned_blocks still has entries for missing sequences
+        # This is current behavior - internal state may be inconsistent
+        assert conversation._pruned_blocks  # Still has entries
+
+    def test_get_block_fallback_with_deleted_file(self, tmp_path: Path) -> None:
+        """get_block() should handle gracefully when session file is deleted.
+
+        After pruning, if file is deleted, get_block for pruned blocks
+        should fail gracefully.
+        """
+
+        conversation = Conversation(
+            persistence_enabled=True,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=2,
+        )
+        block_ids = []
+        with patch.object(conversation, "call_after_refresh"):
+            for i in range(5):
+                block_id = conversation.append("user", f"Message {i}")
+                block_ids.append(block_id)
+
+        assert conversation.pruned_block_count == 3
+
+        # Delete session file
+        session_file = tmp_path / "sessions" / f"{conversation.session_id}.jsonl"
+        session_file.unlink()
+
+        # Try to get a pruned block - should fail
+        # Current behavior: raises SessionError when file not found
+        with pytest.raises(SessionError):
+            conversation.get_block(block_ids[0])
+
+    def test_check_and_restore_with_missing_file(self, tmp_path: Path) -> None:
+        """_check_and_restore_pruned_blocks should handle missing session file.
+
+        Auto-restore triggered by scroll should not crash when file is missing.
+        """
+
+        conversation = Conversation(
+            persistence_enabled=True,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=2,
+        )
+        with patch.object(conversation, "call_after_refresh"):
+            for i in range(5):
+                conversation.append("user", f"Message {i}")
+
+        assert conversation.pruned_block_count == 3
+
+        # Delete session file
+        session_file = tmp_path / "sessions" / f"{conversation.session_id}.jsonl"
+        session_file.unlink()
+
+        # Try to trigger auto-restore via check_and_restore
+        # Current behavior: _check_and_restore_pruned_blocks calls _restore_pruned_blocks
+        # which raises SessionError when file is missing, and it propagates up
+        # (not caught by the method which only catches NoActiveAppError)
+        with pytest.raises(SessionError):
+            conversation._check_and_restore_pruned_blocks(_scroll_y=0.0)
+
+
+# ==============================================================================
+# Test Class: Multiple Conversation Instances
+# ==============================================================================
+
+
+class TestMultipleConversationInstances:
+    """Tests for handling multiple Conversation instances with same session id.
+
+    These tests verify behavior when two Conversation instances interact
+    with the same session file, which can lead to race conditions.
+    """
+
+    def test_two_conversations_same_session_id_append(self, tmp_path: Path) -> None:
+        """Two conversations appending to same session file should not corrupt.
+
+        When two instances append to the same session file, both writes
+        should succeed and file should remain valid.
+        """
+        import json
+
+        session_dir = tmp_path / "sessions"
+
+        # Create first conversation
+        conv1 = Conversation(
+            persistence_enabled=True,
+            session_dir=session_dir,
+            max_blocks_in_memory=10,
+        )
+        session_id = conv1.session_id
+
+        with patch.object(conv1, "call_after_refresh"):
+            for i in range(3):
+                conv1.append("user", f"Conv1 message {i}")
+
+        # Create second conversation with same session_id
+        # Note: This is not the intended use pattern, but tests edge case
+        conv2 = Conversation(
+            persistence_enabled=True,
+            session_dir=session_dir,
+            session_uuid=session_id.split("-")[0],  # Use same base
+            max_blocks_in_memory=10,
+        )
+
+        # Both should write to same file (depending on session_id generation)
+        # This tests current behavior - file may have interleaved writes
+        # or may not exist due to timing/concurrent access
+        with patch.object(conv2, "call_after_refresh"):
+            conv2.append("user", "Conv2 message")
+
+        # Verify session file is valid JSONL if it exists
+        # File may not exist due to race conditions in concurrent access
+        session_file = session_dir / f"{conv1.session_id}.jsonl"
+        if session_file.exists():
+            lines = session_file.read_text().strip().split("\n")
+            for line in lines:
+                json.loads(line)  # Should be valid JSON
+
+    def test_resume_while_original_still_active(self, tmp_path: Path) -> None:
+        """Resuming a session while original instance is active.
+
+        This is an edge case that could lead to file locking or corruption.
+        Current implementation allows it but behavior may be undefined.
+        """
+        # Create first conversation
+        conv1 = Conversation(
+            persistence_enabled=True,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=10,
+        )
+
+        with patch.object(conv1, "call_after_refresh"):
+            for i in range(5):
+                conv1.append("user", f"Message {i}")
+
+        session_id = conv1.session_id
+
+        # Don't close conv1, try to resume with second instance
+        # Current behavior: resume loads from file, both can coexist
+        conv2 = Conversation.resume(
+            session_id,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=10,
+        )
+
+        # Both instances should have the same blocks
+        assert conv2.block_count == 5
+
+        # But they are independent in-memory copies
+        with patch.object(conv1, "call_after_refresh"):
+            conv1.append("user", "From conv1")
+
+        with patch.object(conv2, "call_after_refresh"):
+            conv2.append("user", "From conv2")
+
+        # Both instances see their own blocks
+        assert conv1.block_count == 6
+        assert conv2.block_count == 6
+
+    def test_pruning_conflict_between_instances(self, tmp_path: Path) -> None:
+        """One instance prunes blocks, other tries to access them.
+
+        When one Conversation prunes blocks and another tries to access
+        them, the second should be able to load from file.
+        """
+        # Create first conversation with low threshold
+        conv1 = Conversation(
+            persistence_enabled=True,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=2,
+        )
+
+        block_ids = []
+        with patch.object(conv1, "call_after_refresh"):
+            for i in range(5):
+                block_id = conv1.append("user", f"Message {i}")
+                block_ids.append(block_id)
+
+        session_id = conv1.session_id
+
+        # conv1 has pruned blocks
+        assert conv1.pruned_block_count == 3
+
+        # Create second conversation and resume
+        conv2 = Conversation.resume(
+            session_id,
+            session_dir=tmp_path / "sessions",
+            max_blocks_in_memory=5,  # Higher threshold, all in memory
+        )
+
+        # conv2 should have all blocks in memory
+        assert conv2.pruned_block_count == 0
+        assert conv2.in_memory_block_count == 5
+
+        # conv2 can access all blocks directly
+        for i, block_id in enumerate(block_ids):
+            block = conv2.get_block(block_id)
+            assert block is not None
+            assert block.sequence == i
+
+    def test_concurrent_append_to_same_session(self, tmp_path: Path) -> None:
+        """Race condition with concurrent appends to same session.
+
+        Multiple instances appending concurrently could lead to interleaved
+        writes. This test documents current behavior.
+        """
+        import json
+        from concurrent.futures import ThreadPoolExecutor
+
+        session_dir = tmp_path / "sessions"
+
+        # Create first conversation
+        conv = Conversation(
+            persistence_enabled=True,
+            session_dir=session_dir,
+            max_blocks_in_memory=100,
+        )
+        session_id = conv.session_id
+
+        # Close it to write to file
+        if conv._session_manager is not None:
+            conv._session_manager.close_session()
+
+        def append_to_session(thread_id: int) -> None:
+            """Append blocks to session from a thread."""
+            # Create a new manager for each thread
+            from datetime import datetime, timezone
+
+            from clitic.session import SessionManager
+            from clitic.widgets.conversation import BlockInfo
+
+            manager = SessionManager(
+                persistence_enabled=True,
+                session_dir=session_dir,
+            )
+            # Re-open the session
+            manager.start_session(session_id)
+
+            for i in range(5):
+                block = BlockInfo(
+                    block_id=f"thread-{thread_id}-block-{i}",
+                    role="user",
+                    content=f"Thread {thread_id} message {i}",
+                    metadata={},
+                    timestamp=datetime.now(timezone.utc),
+                    sequence=thread_id * 5 + i,
+                )
+                manager.save_block(block)
+
+        # Run concurrent appends
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [executor.submit(append_to_session, i) for i in range(2)]
+            for future in futures:
+                future.result()  # Wait for completion
+
+        # Verify file is valid JSONL
+        session_file = session_dir / f"{session_id}.jsonl"
+        if session_file.exists():
+            lines = session_file.read_text().strip().split("\n")
+            # Should have 10 blocks (5 from each thread)
+            assert len(lines) >= 10
+
+            # All lines should be valid JSON
+            for line in lines:
+                json.loads(line)

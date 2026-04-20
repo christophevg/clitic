@@ -1,5 +1,11 @@
 # TODO
 
+## Inbox Input (2026-04-20)
+
+*Unstructured input from inbox processing session. To be refined and integrated.*
+
+- clitic: doesn't include latest screenshot in docs documentation
+
 ## Backlog
 
 ### Testing Coverage Improvements
@@ -58,14 +64,15 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
   - **Completed:** 2026-04-18
 
-- [ ] **test-pruning-edge-cases** (Priority: 7/10 - Important)
+- [x] **test-pruning-edge-cases** (Priority: 7/10 - Important)
   - Add Conversation memory pruning edge case tests
   - **Acceptance Criteria:**
-    - [ ] Tests for `_restore_pruned_blocks` with stale data
-    - [ ] Tests for deleted/corrupted session files after pruning
-    - [ ] Tests for multiple Conversation instances with same session id
+    - [x] Tests for `_restore_pruned_blocks` with stale data
+    - [x] Tests for deleted/corrupted session files after pruning
+    - [x] Tests for multiple Conversation instances with same session id
   - **Dependencies:** test-conftest-py
   - **Priority:** P2
+  - **Completed:** 2026-04-20
 
 - [ ] **test-inputbar-theme-language** (Priority: 6/10 - Important)
   - Add InputBar theme and language parameter tests
@@ -654,6 +661,17 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
 
 ## Done
+
+- [x] **test-pruning-edge-cases**
+  - Added Conversation memory pruning edge case tests
+  - Created `TestRestoreWithStaleData` class with 6 tests for stale data scenarios
+  - Created `TestSessionFileUnavailable` class with 6 tests for deleted/corrupted files
+  - Created `TestMultipleConversationInstances` class with 4 tests for concurrent access
+  - Tests document current behavior (SessionError vs graceful False return)
+  - Tests cover file manipulation (delete, corrupt, truncate, reorder)
+  - Tests cover concurrent instances with same session id
+  - Total: 57 pruning tests passing (16 new tests)
+  - **Completed:** 2026-04-20
 
 - [x] **conversation-block-navigation**
   - Added block navigation and selection to Conversation widget
