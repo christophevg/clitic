@@ -368,3 +368,43 @@ conversation = Conversation(navigation_bell=False)
 conversation.wrap_navigation = False
 conversation.navigation_bell = False
 ```
+
+### Plugin Rendering
+
+Conversation supports content plugins for rendering different content types. Pass plugins when creating the widget:
+
+```python
+from clitic import App, Conversation
+from clitic.plugins import MarkdownPlugin
+
+app = App()
+app.register_plugin(MarkdownPlugin())
+
+# Pass plugins to Conversation
+conversation = Conversation(plugins=app.get_plugins())
+
+# Add content with content_type metadata
+conversation.append(
+    "assistant",
+    "# Hello\n\nThis is **bold** text.\n\n```python\nprint('Hello')\n```",
+    metadata={"content_type": "text/markdown"}
+)
+```
+
+When content is added with `content_type` metadata:
+
+1. Conversation checks registered plugins for a match
+2. Plugins are sorted by priority (highest first)
+3. First matching plugin renders the content
+4. If no plugin matches, plain text is used
+
+### Plugin Constructor Parameter
+
+```python
+Conversation(
+    plugins: list[ContentPlugin] | None = None,  # Content rendering plugins
+    # ... other parameters
+)
+```
+
+If `plugins` is `None` or empty, all content is rendered as plain text.

@@ -1,11 +1,11 @@
 """Tests for the Markdown plugin.
 
 This module tests the MarkdownPlugin class for rendering Markdown content
-using Textual's Markdown widget.
+using Rich's Markdown renderer.
 """
 
 import pytest
-from textual.widgets import Markdown
+from rich.markdown import Markdown
 
 from clitic.plugins import MarkdownPlugin
 
@@ -22,16 +22,6 @@ class TestMarkdownPluginProperties:
     """The priority property should return 10."""
     plugin = MarkdownPlugin()
     assert plugin.priority == 10
-
-  def test_open_links_defaults_to_true(self) -> None:
-    """open_links should default to True."""
-    plugin = MarkdownPlugin()
-    assert plugin.open_links is True
-
-  def test_open_links_can_be_set_to_false(self) -> None:
-    """open_links can be set to False."""
-    plugin = MarkdownPlugin(open_links=False)
-    assert plugin.open_links is False
 
 
 class TestMarkdownPluginCanRender:
@@ -98,8 +88,8 @@ class TestMarkdownPluginCanRender:
 class TestMarkdownPluginRender:
   """Tests for MarkdownPlugin.render method."""
 
-  def test_render_returns_markdown_widget(self) -> None:
-    """render should return a Textual Markdown widget."""
+  def test_render_returns_markdown_object(self) -> None:
+    """render should return a Rich Markdown object."""
     plugin = MarkdownPlugin()
     result = plugin.render("# Hello World")
     assert isinstance(result, Markdown)
@@ -108,7 +98,6 @@ class TestMarkdownPluginRender:
     """render should handle simple header."""
     plugin = MarkdownPlugin()
     result = plugin.render("# Hello World")
-    # The Markdown widget is created successfully
     assert isinstance(result, Markdown)
 
   def test_render_with_paragraph(self) -> None:
@@ -160,19 +149,6 @@ Plain code block
     """render should handle links."""
     plugin = MarkdownPlugin()
     result = plugin.render("[Click here](https://example.com)")
-    assert isinstance(result, Markdown)
-
-  def test_render_with_link_open_links_true(self) -> None:
-    """render with open_links=True should create clickable links."""
-    plugin = MarkdownPlugin(open_links=True)
-    result = plugin.render("[Link](https://example.com)")
-    assert isinstance(result, Markdown)
-    # The open_links parameter is passed to the Markdown widget
-
-  def test_render_with_link_open_links_false(self) -> None:
-    """render with open_links=False should create non-clickable links."""
-    plugin = MarkdownPlugin(open_links=False)
-    result = plugin.render("[Link](https://example.com)")
     assert isinstance(result, Markdown)
 
   def test_render_with_headers_all_levels(self) -> None:
@@ -232,8 +208,8 @@ class TestMarkdownPluginRenderAsync:
   """Tests for MarkdownPlugin.render_async method."""
 
   @pytest.mark.asyncio
-  async def test_render_async_returns_markdown_widget(self) -> None:
-    """render_async should return a Textual Markdown widget."""
+  async def test_render_async_returns_markdown_object(self) -> None:
+    """render_async should return a Rich Markdown object."""
     plugin = MarkdownPlugin()
     result = await plugin.render_async("# Hello World")
     assert isinstance(result, Markdown)
@@ -244,7 +220,7 @@ class TestMarkdownPluginRenderAsync:
     plugin = MarkdownPlugin()
     sync_result = plugin.render("# Test")
     async_result = await plugin.render_async("# Test")
-    # Both should return Markdown widgets
+    # Both should return Markdown objects
     assert isinstance(sync_result, Markdown)
     assert isinstance(async_result, Markdown)
 
@@ -252,24 +228,10 @@ class TestMarkdownPluginRenderAsync:
 class TestMarkdownPluginIntegration:
   """Integration tests for MarkdownPlugin."""
 
-  def test_plugin_integration_with_app(self) -> None:
-    """Test that plugin can be used within a Textual app context."""
-    from textual.app import App, ComposeResult
-
-    class TestApp(App):
-      def compose(self) -> ComposeResult:
-        plugin = MarkdownPlugin()
-        yield plugin.render("# Hello\n\nThis is **markdown**.")
-
-    # The app should compose successfully
-    app = TestApp()
-    # Just verify composition works
-    assert app is not None
-
   def test_multiple_plugins_independently(self) -> None:
     """Test that multiple plugin instances work independently."""
-    plugin1 = MarkdownPlugin(open_links=True)
-    plugin2 = MarkdownPlugin(open_links=False)
+    plugin1 = MarkdownPlugin()
+    plugin2 = MarkdownPlugin()
 
-    assert plugin1.open_links is True
-    assert plugin2.open_links is False
+    assert plugin1.name == "Markdown"
+    assert plugin2.name == "Markdown"

@@ -1,10 +1,10 @@
 """Markdown content plugin for clitic.
 
 This module provides a Markdown plugin that renders Markdown content
-using Textual's built-in Markdown widget.
+using Rich's Markdown renderer.
 """
 
-from textual.widgets import Markdown
+from rich.markdown import Markdown
 
 from clitic.plugins.base import ContentPlugin, Renderable
 
@@ -13,19 +13,18 @@ class MarkdownPlugin(ContentPlugin):
   """Content plugin for rendering Markdown.
 
   This plugin handles Markdown content (content_type starting with "text/markdown"
-  or "markdown/") and renders it using Textual's Markdown widget, which supports:
+  or "markdown/") and renders it using Rich's Markdown renderer, which supports:
 
   - Headers (h1-h6)
   - Paragraphs
   - Lists (ordered and unordered)
   - Inline code with backticks
   - Code blocks with language tags
-  - Links (clickable when open_links=True)
+  - Links
 
   Attributes:
     name: Human-readable name ("Markdown").
     priority: Plugin priority (10, high for default handling).
-    open_links: Whether links should be clickable.
   """
 
   @property
@@ -44,14 +43,6 @@ class MarkdownPlugin(ContentPlugin):
       Priority value (10 by default for markdown).
     """
     return 10
-
-  def __init__(self, *, open_links: bool = True) -> None:
-    """Initialize the Markdown plugin.
-
-    Args:
-      open_links: Whether links should be clickable. Defaults to True.
-    """
-    self._open_links = open_links
 
   def can_render(self, content_type: str, content: str | Renderable) -> bool:
     """Check if this plugin can render the given content.
@@ -78,22 +69,13 @@ class MarkdownPlugin(ContentPlugin):
     return False
 
   def render(self, content: str | Renderable) -> Markdown:
-    """Render Markdown content to a Textual Markdown widget.
+    """Render Markdown content to a Rich Markdown renderable.
 
     Args:
       content: The Markdown content to render.
 
     Returns:
-      A Textual Markdown widget displaying the rendered content.
-
-    Raises:
-      RenderError: If rendering fails (currently never raised, but
-        reserved for future error handling).
+      A Rich Markdown renderable displaying the rendered content.
     """
     markdown_text = str(content)
-    return Markdown(markdown_text, open_links=self._open_links)
-
-  @property
-  def open_links(self) -> bool:
-    """Whether links should be clickable."""
-    return self._open_links
+    return Markdown(markdown_text)

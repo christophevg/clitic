@@ -4,19 +4,6 @@
 
 ### Plugin Integration (P1 - Essential)
 
-- [ ] **plugin-conversation-integration**
-  - Integrate ContentPlugin system with Conversation widget rendering
-  - **Acceptance Criteria:**
-    - [ ] Conversation queries registered plugins for content rendering
-    - [ ] Blocks with `content_type` metadata use appropriate plugin
-    - [ ] Fallback to plain text when no plugin matches
-    - [ ] Markdown content renders correctly in Conversation
-    - [ ] Plugin rendering works with virtual rendering (performance maintained)
-    - [ ] Integration tests for plugin rendering flow
-    - [ ] Showcase demonstrates markdown rendering
-  - **Dependencies:** plugin-markdown-basic
-  - **Priority:** P1
-
 - [ ] **syntax-highlighting-widget**
   - Create generic syntax highlighting widget for code content
   - **Acceptance Criteria:**
@@ -690,6 +677,25 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
 
 ## Done
+
+- [x] **plugin-conversation-integration**
+  - Integrated ContentPlugin system with Conversation widget rendering
+  - **Acceptance Criteria:**
+    - [x] Conversation queries registered plugins for content rendering
+    - [x] Blocks with `content_type` metadata use appropriate plugin
+    - [x] Fallback to plain text when no plugin matches
+    - [x] Markdown content renders correctly in Conversation
+    - [x] Plugin rendering works with virtual rendering (performance maintained)
+    - [x] Integration tests for plugin rendering flow
+    - [x] Showcase demonstrates markdown rendering
+  - **Files Modified:**
+    - `src/clitic/core/app.py` - Added `get_plugin_for_content()` method
+    - `src/clitic/widgets/conversation.py` - Added plugins param, widget-to-strips bridge, content routing
+    - `src/clitic/__main__.py` - Added MarkdownPlugin to showcase
+    - `tests/test_conversation_plugin_rendering.py` - New integration tests (20 tests)
+  - **Reviews:** Functional PASS, UX/UI PASS, Code PASS, Testing PASS (minor gaps)
+  - **729 tests passing, 84% coverage**
+  - **Completed:** 2026-04-21
 
 - [x] **test-conversation-render-errors**
   - Added Conversation render_line error handling tests

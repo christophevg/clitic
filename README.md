@@ -73,13 +73,14 @@ See the [documentation](https://clitic.readthedocs.io/) for complete API referen
 
 - **InputBar**: Multiline input with auto-grow, cursor movement, selection, and submit-on-Enter
 - **Conversation**: Scrollable content container with virtual rendering for 100,000+ lines
+- **Plugin System**: Extensible content rendering with built-in Markdown support
 - **Session persistence**: Resume conversations with block pruning for memory efficiency
 - **Theming**: Dark and light themes with CSS-like styling
 
 ## Roadmap
 
 - **Tree/Table**: Collapsible tree and table widgets
-- **Plugins**: Markdown, diff, and terminal content renderers
+- **Additional Plugins**: Diff and terminal content renderers
 - **Responsive layouts**: Adaptive layouts based on terminal width
 
 ## Development

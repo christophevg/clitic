@@ -138,3 +138,25 @@ class App(TextualApp[Any]):
             List of registered ContentPlugin instances.
         """
         return self._plugins.copy()
+
+    def get_plugin_for_content(
+        self, content_type: str, content: str
+    ) -> ContentPlugin | None:
+        """Get the best plugin for rendering content.
+
+        Returns highest-priority plugin matching content_type, or None.
+
+        Args:
+            content_type: MIME type or identifier for the content.
+            content: The content to potentially render.
+
+        Returns:
+            The matching ContentPlugin with highest priority, or None if no match.
+        """
+        matching_plugins = [
+            plugin
+            for plugin in self._plugins
+            if plugin.can_render(content_type, content)
+        ]
+        matching_plugins.sort(key=lambda p: p.priority, reverse=True)
+        return matching_plugins[0] if matching_plugins else None

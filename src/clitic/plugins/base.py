@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from textual.app import App
-    from textual.widget import Widget
 
     # Type alias for App with default ActionResult type
     TextualApp = App[object]
@@ -90,22 +89,23 @@ class ContentPlugin(ABC):
         ...
 
     @abstractmethod
-    def render(self, content: str | Renderable) -> "Widget":
-        """Render content to a Textual Widget.
+    def render(self, content: str | Renderable) -> object:
+        """Render content to a renderable object.
 
         Args:
             content: The content to render.
 
         Returns:
-            A Textual Widget displaying the rendered content.
+            A Rich renderable (e.g., rich.markdown.Markdown, rich.text.Text)
+            or Textual Widget that can be rendered by Conversation.
 
         Raises:
             RenderError: If rendering fails.
         """
         ...
 
-    async def render_async(self, content: str | Renderable) -> "Widget":
-        """Asynchronously render content to a Textual Widget.
+    async def render_async(self, content: str | Renderable) -> object:
+        """Asynchronously render content to a renderable object.
 
         Default implementation calls the synchronous render method.
         Subclasses may override for async rendering (e.g., fetching resources).
@@ -114,7 +114,7 @@ class ContentPlugin(ABC):
             content: The content to render.
 
         Returns:
-            A Textual Widget displaying the rendered content.
+            A Rich renderable or Textual Widget.
 
         Raises:
             RenderError: If rendering fails.

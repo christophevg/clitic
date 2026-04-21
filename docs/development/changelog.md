@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Plugin System Integration**: Content rendering plugins now integrate with Conversation widget
+  - Blocks with `content_type` metadata are routed to matching plugins
+  - Built-in `MarkdownPlugin` renders Markdown content with formatting
+  - Fallback to plain text when no plugin matches or rendering fails
+  - Plugin priority ordering (higher priority plugins checked first)
+  - Role labels preserved on plugin-rendered content
+- **MarkdownPlugin**: Built-in plugin for rendering Markdown content
+  - Supports `text/markdown`, `markdown`, and `markdown/*` content types
+  - Renders headers, bold, italic, lists, code blocks, and links
+  - High priority (10) for default handling
+- **App Plugin Methods**: New methods for plugin management
+  - `register_plugin(plugin)` - Register a content plugin
+  - `unregister_plugin(plugin)` - Unregister a plugin
+  - `get_plugins()` - Get list of registered plugins
+  - `get_plugin_for_content(content_type, content)` - Find best matching plugin
+- **Conversation Plugin Support**: New `plugins` parameter in `__init__`
+  - Accepts list of ContentPlugin instances
+  - Routes content to plugins based on `content_type` metadata
+  - Graceful fallback on plugin failure
 - **Block Navigation**: Navigate between conversation blocks with keyboard
   - Alt+Up/Down to select previous/next block
   - Escape to clear selection

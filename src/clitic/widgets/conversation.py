@@ -12,9 +12,9 @@ from bisect import bisect_right
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
-from rich.console import Console
+from rich.console import Console, ConsoleRenderable
 from rich.segment import Segment as RichSegment
 from rich.style import Style
 from rich.text import Text
@@ -26,7 +26,10 @@ from textual.scroll_view import ScrollView
 from textual.strip import Strip
 
 if TYPE_CHECKING:
-    from clitic.session import SessionManager
+  from textual.widget import Widget
+
+  from clitic.plugins import ContentPlugin
+  from clitic.session import SessionManager
 
 _DEFAULT_WIDTH: int = 80
 
@@ -156,6 +159,7 @@ class Conversation(ScrollView):
         max_blocks_in_memory: int = 100,
         wrap_navigation: bool = True,
         navigation_bell: bool = True,
+        plugins: list[ContentPlugin] | None = None,
         name: str | None = None,
         id: str | None = None,  # noqa: A002
         classes: str | None = None,
@@ -174,6 +178,7 @@ class Conversation(ScrollView):
                 in the session file. Default: 100.
             wrap_navigation: Whether navigation wraps at boundaries. Default: True.
             navigation_bell: Whether to play bell at boundaries. Default: True.
+            plugins: Optional list of content plugins for custom rendering.
             name: Name of the widget.
             id: ID of the widget.
             classes: Space-separated CSS classes.
@@ -194,6 +199,8 @@ class Conversation(ScrollView):
         self._is_loading: bool = False
         # Navigation state
         self._selected_index: int = -1  # -1 means no selection
+        # Plugin support
+        self._plugins: list[ContentPlugin] = plugins or []
         super().__init__(name=name, id=id, classes=classes, disabled=disabled)
         self.auto_scroll = auto_scroll
         self.wrap_navigation = wrap_navigation
@@ -429,6 +436,10 @@ class Conversation(ScrollView):
     ) -> list[Strip]:
         """Render a block's content to a list of Strips.
 
+        Routes to plugin rendering if content_type metadata is present and
+        a matching plugin is available. Falls back to plain text rendering
+        on any failure.
+
         Args:
             block: The block data to render.
             width: The width to render at (for text wrapping).
@@ -437,6 +448,36 @@ class Conversation(ScrollView):
         Returns:
             List of Strip objects, one per line.
         """
+        # Check for content_type in metadata for plugin rendering
+        content_type = block.info.metadata.get("content_type")
+
+        if content_type and self._plugins:
+            plugin = self._get_matching_plugin(content_type, block.info.content)
+            if plugin:
+                # Calculate role label width to leave room for it
+                role_label = {
+                    "user": "You",
+                    "assistant": "Assistant",
+                    "system": "System",
+                    "tool": "Tool",
+                }.get(block.info.role, block.info.role)
+                role_label_width = len(f"[{role_label}] ")
+
+                # Render plugin content at reduced width to leave room for role label
+                content_width = max(width - role_label_width, 20)
+                plugin_strips = self._render_plugin_to_strips(
+                    plugin, block.info.content, content_width, block.info.role, is_selected
+                )
+                if plugin_strips:
+                    # Add role label prefix to first strip
+                    plugin_strips = self._add_role_label_to_strips(
+                        plugin_strips, block.info.role, width, is_selected
+                    )
+                    # Add blank margin between blocks
+                    plugin_strips.append(Strip.blank(width, getattr(self, "rich_style", None)))
+                    return plugin_strips
+
+        # Fall back to plain text rendering
         # Create the styled text based on role
         if block.info.role == "user":
             base_style = Style(bold=True, color="blue")
@@ -489,6 +530,191 @@ class Conversation(ScrollView):
         strips.append(blank_strip)
 
         return strips
+
+    def _get_matching_plugin(
+        self, content_type: str, content: str
+    ) -> ContentPlugin | None:
+        """Find best plugin for content type, sorted by priority.
+
+        Args:
+            content_type: MIME type or identifier for the content.
+            content: The content to potentially render.
+
+        Returns:
+            The matching ContentPlugin with highest priority, or None.
+        """
+        matching_plugins = [
+            p for p in self._plugins if p.can_render(content_type, content)
+        ]
+        matching_plugins.sort(key=lambda p: p.priority, reverse=True)
+        return matching_plugins[0] if matching_plugins else None
+
+    def _render_plugin_to_strips(
+        self,
+        plugin: ContentPlugin,
+        content: str,
+        width: int,
+        role: str,
+        is_selected: bool,
+    ) -> list[Strip] | None:
+        """Render content using plugin to strips. Returns None on failure.
+
+        Args:
+            plugin: The plugin to use for rendering.
+            content: The content to render.
+            width: The width to render at.
+            role: The role of the message.
+            is_selected: Whether this block is selected.
+
+        Returns:
+            List of Strip objects, or None on failure.
+        """
+        try:
+            renderable = plugin.render(content)
+            return self._renderable_to_strips(renderable, width)
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).exception(
+                f"Plugin {plugin.name} failed to render content"
+            )
+            return None
+
+    def _renderable_to_strips(
+        self,
+        renderable: object,
+        width: int,
+    ) -> list[Strip] | None:
+        """Convert a Rich renderable to list of Strips.
+
+        Args:
+            renderable: The Rich renderable (or object with render() method).
+            width: The width to render at.
+
+        Returns:
+            List of Strip objects, or None on failure.
+        """
+        try:
+            # Use Rich Console to render lines
+            console = Console(width=width)
+            lines = list(console.render_lines(cast(ConsoleRenderable, renderable)))
+
+            # Convert lines to strips
+            strips: list[Strip] = []
+            for line in lines:
+                segments = []
+                for segment in line:
+                    if len(segment) == 2:
+                        segments.append(RichSegment(segment[0], segment[1], None))
+                    else:
+                        segments.append(segment)
+                strips.append(Strip(segments, width))
+
+            return strips if strips else None
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).exception(
+                "Failed to convert renderable to strips"
+            )
+            return None
+
+    def _widget_to_strips(
+        self,
+        widget: Widget,
+        width: int,
+        role: str,
+        is_selected: bool,
+    ) -> list[Strip] | None:
+        """Convert Textual Widget to list of Strips using Rich Console.
+
+        Args:
+            widget: The Textual Widget to convert.
+            width: The width to render at.
+            role: The role of the message.
+            is_selected: Whether this block is selected.
+
+        Returns:
+            List of Strip objects, or None on failure.
+        """
+        try:
+            # Get widget's renderable content
+            renderable = widget.render()
+
+            # Delegate to renderable_to_strips
+            return self._renderable_to_strips(renderable, width)
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).exception(
+                "Failed to convert widget to strips"
+            )
+            return None
+
+    def _add_role_label_to_strips(
+        self,
+        strips: list[Strip],
+        role: str,
+        width: int,
+        is_selected: bool,
+    ) -> list[Strip]:
+        """Add role label prefix to first strip line.
+
+        Args:
+            strips: The strips to modify.
+            role: The role of the message.
+            width: The width to render at.
+            is_selected: Whether this block is selected.
+
+        Returns:
+            List of Strip objects with role label prepended to first line.
+        """
+        if not strips:
+            return strips
+
+        # Role labels
+        role_label = {
+            "user": "You",
+            "assistant": "Assistant",
+            "system": "System",
+            "tool": "Tool",
+        }.get(role, role)
+
+        # Role styles
+        if is_selected:
+            style = Style(bold=True, color="cyan")
+        elif role == "user":
+            style = Style(bold=True, color="blue")
+        elif role == "assistant":
+            style = Style(bold=True, color="green")
+        elif role == "system":
+            style = Style(bold=True, color="yellow")
+        elif role == "tool":
+            style = Style(bold=True, color="magenta")
+        else:
+            style = Style(bold=True, color="grey62")
+
+        # Create label text and render
+        label_text = Text(f"[{role_label}] ", style=style)
+        console = Console(width=width)
+        label_lines = list(console.render_lines(label_text))
+
+        if not label_lines:
+            return strips
+
+        # Prepend label to first strip
+        label_segments = []
+        for segment in label_lines[0]:
+            if len(segment) == 2:
+                label_segments.append(RichSegment(segment[0], segment[1], None))
+            else:
+                label_segments.append(segment)
+
+        first_strip = strips[0]
+        new_segments = label_segments + list(first_strip)
+        new_first = Strip(new_segments, width)
+
+        return [new_first] + strips[1:]
 
     def _rerender_all_blocks(self) -> None:
         """Re-render all blocks with current width."""

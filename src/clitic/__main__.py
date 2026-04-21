@@ -19,6 +19,7 @@ from textual.app import ComposeResult
 from textual.widgets import Footer, Header
 
 from clitic import App, Conversation, HistoryManager, InputBar, __version__
+from clitic.plugins import MarkdownPlugin
 
 if TYPE_CHECKING:
     pass
@@ -80,6 +81,8 @@ class ShowcaseApp(App):
         self._message_count = 0
         self._conversation = conversation
         self._history = HistoryManager()
+        # Register plugins for content rendering
+        self.register_plugin(MarkdownPlugin())
 
     def compose(self) -> ComposeResult:
         """Compose the app layout."""
@@ -87,7 +90,10 @@ class ShowcaseApp(App):
         if self._conversation is not None:
             yield self._conversation
         else:
-            yield Conversation(id="messages")
+            yield Conversation(
+                id="messages",
+                plugins=self.get_plugins(),
+            )
         # Note: Use submit_on_enter=False to make Shift+Enter submit and Enter insert newline
         yield InputBar(
             placeholder="Type your message here...",
@@ -110,6 +116,22 @@ class ShowcaseApp(App):
             metadata={"type": "welcome", "version": __version__},
         )
         conversation.append("system", session_info, metadata={"type": "info"})
+
+        # Demonstrate markdown rendering
+        conversation.append(
+            "assistant",
+            "# Markdown Support\n\n"
+            "This message demonstrates **markdown** rendering.\n\n"
+            "Features:\n"
+            "- Headers\n"
+            "- **Bold** and *italic* text\n"
+            "- Lists\n"
+            "- Code blocks\n\n"
+            "```python\n"
+            "print('Hello, World!')\n"
+            "```",
+            metadata={"content_type": "text/markdown"},
+        )
 
         # Demonstrate block retrieval
         self.query_one(InputBar).focus()
@@ -209,13 +231,20 @@ def main() -> None:
                 )
         return
 
-    # Create conversation
+    # Create app first to get plugins
+    app = ShowcaseApp()
+
+    # Create conversation with plugins from app
     if args.resume:
         conversation = Conversation.resume(args.resume)
     else:
-        conversation = Conversation(persistence_enabled=args.persistence)
+        conversation = Conversation(
+            persistence_enabled=args.persistence,
+            plugins=app.get_plugins(),
+        )
 
-    app = ShowcaseApp(conversation=conversation)
+    # Set the conversation on the app
+    app._conversation = conversation
     app.run()
 
 
