@@ -16,6 +16,7 @@ from clitic.history import DEFAULT_HISTORY_FILE, HistoryEntry, HistoryManager
 from clitic.plugins import (
     ContentPlugin,
     Highlighter,
+    MarkdownPlugin,
     ModeProvider,
     Renderable,
 )
@@ -43,6 +44,7 @@ __all__ = [
   # Plugin base classes
   "ContentPlugin",
   "Highlighter",
+  "MarkdownPlugin",
   "ModeProvider",
   "Renderable",
   # Completion base classes

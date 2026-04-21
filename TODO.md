@@ -2,6 +2,34 @@
 
 ## Backlog
 
+### Plugin Integration (P1 - Essential)
+
+- [ ] **plugin-conversation-integration**
+  - Integrate ContentPlugin system with Conversation widget rendering
+  - **Acceptance Criteria:**
+    - [ ] Conversation queries registered plugins for content rendering
+    - [ ] Blocks with `content_type` metadata use appropriate plugin
+    - [ ] Fallback to plain text when no plugin matches
+    - [ ] Markdown content renders correctly in Conversation
+    - [ ] Plugin rendering works with virtual rendering (performance maintained)
+    - [ ] Integration tests for plugin rendering flow
+    - [ ] Showcase demonstrates markdown rendering
+  - **Dependencies:** plugin-markdown-basic
+  - **Priority:** P1
+
+- [ ] **syntax-highlighting-widget**
+  - Create generic syntax highlighting widget for code content
+  - **Acceptance Criteria:**
+    - [ ] `src/clitic/widgets/syntax_highlight.py` exists
+    - [ ] Supports multiple languages (Python, JavaScript, Bash, etc.)
+    - [ ] Uses Rich/pygments for syntax highlighting
+    - [ ] Configurable theme (maps to app theme)
+    - [ ] Works within Conversation's virtual rendering
+    - [ ] Can be used standalone or embedded in other widgets
+    - [ ] Unit tests for highlighting
+  - **Dependencies:** None
+  - **Priority:** P1
+
 ### Testing Coverage Improvements
 
 These tasks address gaps identified by the testing-engineer review (see `docs/development/test-coverage-review.md`).
@@ -270,14 +298,15 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
 - [ ] **plugin-markdown-basic**
   - Create Markdown renderer with basic elements (FR-009)
   - **Acceptance Criteria:**
-    - [ ] `src/clitic/plugins/markdown.py` exists with MarkdownPlugin class
-    - [ ] Renders headers (h1-h6), paragraphs, lists
-    - [ ] Renders inline code and code blocks
-    - [ ] Renders links (clickable)
+    - [x] `src/clitic/plugins/markdown.py` exists with MarkdownPlugin class
+    - [x] Renders headers (h1-h6), paragraphs, lists
+    - [x] Renders inline code and code blocks
+    - [x] Renders links (clickable)
     - [ ] Integrates with Conversation via plugin interface
-    - [ ] Unit tests for markdown rendering
+    - [x] Unit tests for markdown rendering
   - **Dependencies:** plugin-base-classes, conversation-basic
   - **Priority:** P1
+  - **Status:** Plugin class implemented, integration pending
 
 - [ ] **plugin-markdown-code-blocks**
   - Add syntax highlighting in code blocks (FR-009)
@@ -286,7 +315,7 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
     - [ ] Support common languages (Python, JavaScript, Bash)
     - [ ] Extensible highlighter interface
     - [ ] Fallback to plain text for unknown languages
-  - **Dependencies:** plugin-markdown-basic
+  - **Dependencies:** plugin-markdown-basic, syntax-highlighting-widget
   - **Priority:** P1
 
 - [ ] **plugin-diff-unified**
