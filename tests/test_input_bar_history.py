@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
 from textual.events import Key
 
 from clitic import HistoryManager, InputBar
@@ -247,7 +246,6 @@ class TestInputBarHistoryIntegration:
 
     # Create new history manager (simulating restart)
     history2 = HistoryManager(history_file=history_file)
-    input_bar2 = InputBar(history=history2)
 
     # History should be preserved
     assert len(history2) == 2

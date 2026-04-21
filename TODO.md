@@ -88,14 +88,6 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
   - **Completed:** 2026-04-20
 
-- [ ] **test-conversation-render-errors** (Priority: 6/10 - Important)
-  - Add Conversation render_line error handling tests
-  - **Acceptance Criteria:**
-    - [ ] Tests for invalid block data in `_blocks` list
-    - [ ] Tests for corrupted `_strips` list
-    - [ ] Tests for width changes during rendering
-  - **Dependencies:** test-conftest-py
-  - **Priority:** P2
 
 - [ ] **test-cli-arguments** (Priority: 4/10 - Lower)
   - Add CLI argument tests for `__main__.py`
@@ -669,6 +661,19 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
 
 ## Done
+
+- [x] **test-conversation-render-errors**
+  - Added Conversation render_line error handling tests
+  - Created `TestInvalidBlockData` class with 4 tests for invalid block scenarios
+  - Created `TestCorruptedStripsList` class with 5 tests for corrupted strips scenarios
+  - Created `TestWidthChangesDuringRendering` class with 6 tests for width/resize handling
+  - Created `TestRenderLineEdgeCases` class with 6 tests for edge cases
+  - Created `TestScrollableContentRegionEdgeCases` class with 2 tests
+  - Created `TestStripOperations` class with 2 tests
+  - Created `TestRenderLineIntegration` class with 4 integration tests
+  - Tests cover: invalid block data, corrupted strips, width changes, scrollable_content_region edge cases
+  - All acceptance criteria verified
+  - **Completed:** 2026-04-21
 
 - [x] **test-app-theme-css**
   - Created tests for App CSS_PATH and theme configuration
