@@ -12,7 +12,7 @@ from bisect import bisect_right
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 from rich.console import Console, ConsoleRenderable
 from rich.segment import Segment as RichSegment
@@ -32,6 +32,27 @@ if TYPE_CHECKING:
   from clitic.session import SessionManager
 
 _DEFAULT_WIDTH: int = 80
+
+
+class RoleLabelConfig(TypedDict):
+  """Configuration for how a role is displayed.
+
+  Attributes:
+    label: The display label for this role (e.g., "You", "Bot").
+    style: The Rich Style to apply to the label.
+  """
+
+  label: str
+  style: Style
+
+
+# Default role label configuration - can be overridden by user
+DEFAULT_ROLE_LABELS: dict[str, RoleLabelConfig] = {
+  "user": {"label": "User", "style": Style(bold=True, color="blue")},
+  "assistant": {"label": "Assistant", "style": Style(bold=True, color="green")},
+  "system": {"label": "System", "style": Style(bold=True, color="yellow")},
+  "tool": {"label": "Tool", "style": Style(bold=True, color="magenta")},
+}
 
 
 @dataclass(frozen=True)
@@ -160,6 +181,7 @@ class Conversation(ScrollView):
         wrap_navigation: bool = True,
         navigation_bell: bool = True,
         plugins: list[ContentPlugin] | None = None,
+        role_labels: dict[str, RoleLabelConfig] | None = None,
         name: str | None = None,
         id: str | None = None,  # noqa: A002
         classes: str | None = None,
@@ -179,6 +201,9 @@ class Conversation(ScrollView):
             wrap_navigation: Whether navigation wraps at boundaries. Default: True.
             navigation_bell: Whether to play bell at boundaries. Default: True.
             plugins: Optional list of content plugins for custom rendering.
+            role_labels: Optional mapping of role names to their display config.
+                Keys are role names (e.g., "user", "bot"), values are dicts with
+                "label" (display text) and "style" (Rich Style). Defaults provided.
             name: Name of the widget.
             id: ID of the widget.
             classes: Space-separated CSS classes.
@@ -201,6 +226,11 @@ class Conversation(ScrollView):
         self._selected_index: int = -1  # -1 means no selection
         # Plugin support
         self._plugins: list[ContentPlugin] = plugins or []
+        # Role labels configuration
+        self._role_labels: dict[str, RoleLabelConfig] = {
+          **DEFAULT_ROLE_LABELS,
+          **(role_labels or {}),
+        }
         super().__init__(name=name, id=id, classes=classes, disabled=disabled)
         self.auto_scroll = auto_scroll
         self.wrap_navigation = wrap_navigation
@@ -454,55 +484,36 @@ class Conversation(ScrollView):
         if content_type and self._plugins:
             plugin = self._get_matching_plugin(content_type, block.info.content)
             if plugin:
-                # Calculate role label width to leave room for it
-                role_label = {
-                    "user": "You",
-                    "assistant": "Assistant",
-                    "system": "System",
-                    "tool": "Tool",
-                }.get(block.info.role, block.info.role)
-                role_label_width = len(f"[{role_label}] ")
-
-                # Render plugin content at reduced width to leave room for role label
-                content_width = max(width - role_label_width, 20)
+                # Render plugin content at full width
                 plugin_strips = self._render_plugin_to_strips(
-                    plugin, block.info.content, content_width, block.info.role, is_selected
+                    plugin, block.info.content, width, block.info.role, is_selected
                 )
                 if plugin_strips:
-                    # Add role label prefix to first strip
-                    plugin_strips = self._add_role_label_to_strips(
-                        plugin_strips, block.info.role, width, is_selected
+                    # Create role label on its own line for plugin content
+                    role_label_strip = self._create_role_label_strip(
+                        block.info.role, width, is_selected
                     )
-                    # Add blank margin between blocks
-                    plugin_strips.append(Strip.blank(width, getattr(self, "rich_style", None)))
-                    return plugin_strips
+                    # Combine: role label + plugin content + blank margin
+                    result_strips = [role_label_strip] + plugin_strips
+                    result_strips.append(Strip.blank(width, getattr(self, "rich_style", None)))
+                    return result_strips
 
         # Fall back to plain text rendering
-        # Create the styled text based on role
-        if block.info.role == "user":
-            base_style = Style(bold=True, color="blue")
-        elif block.info.role == "assistant":
-            base_style = Style(bold=True, color="green")
-        elif block.info.role == "system":
-            base_style = Style(bold=True, color="yellow")
-        elif block.info.role == "tool":
-            base_style = Style(bold=True, color="magenta")
+        # Get style from configuration or use default
+        role_config = self._role_labels.get(block.info.role)
+        if role_config:
+            base_style = role_config["style"]
+            role_label = role_config["label"]
         else:
-            # Default styling for unknown roles
+            # Default for unknown roles
             base_style = Style(bold=True, color="grey62")
+            role_label = block.info.role
 
         # Selection uses cyan color to highlight the block
         if is_selected:
             style = Style(bold=True, color="cyan")
         else:
             style = base_style
-
-        role_label = {
-            "user": "You",
-            "assistant": "Assistant",
-            "system": "System",
-            "tool": "Tool",
-        }.get(block.info.role, block.info.role)
 
         text = Text(f"[{role_label}] {block.info.content}", style=style)
 
@@ -672,49 +683,94 @@ class Conversation(ScrollView):
         if not strips:
             return strips
 
-        # Role labels
-        role_label = {
-            "user": "You",
-            "assistant": "Assistant",
-            "system": "System",
-            "tool": "Tool",
-        }.get(role, role)
+        # Get role label from configuration
+        role_config = self._role_labels.get(role)
+        role_label = role_config["label"] if role_config else role
+        base_style = role_config["style"] if role_config else Style(bold=True, color="grey62")
 
-        # Role styles
+        # Selection overrides style
         if is_selected:
             style = Style(bold=True, color="cyan")
-        elif role == "user":
-            style = Style(bold=True, color="blue")
-        elif role == "assistant":
-            style = Style(bold=True, color="green")
-        elif role == "system":
-            style = Style(bold=True, color="yellow")
-        elif role == "tool":
-            style = Style(bold=True, color="magenta")
         else:
-            style = Style(bold=True, color="grey62")
+            style = base_style
 
-        # Create label text and render
+        # Create label text and render WITHOUT padding to full width
         label_text = Text(f"[{role_label}] ", style=style)
-        console = Console(width=width)
-        label_lines = list(console.render_lines(label_text))
+        # Create a console just for rendering options (not for width-based padding)
+        console = Console()
+        # Use __rich_console__ to get segments without width padding
+        render_iter = label_text.__rich_console__(console, console.options)
+        label_segments: list[RichSegment] = []
+        for segment in render_iter:
+            # Segments are 3-tuples: (text, style, control)
+            # Or 2-tuples: (text, style)
+            if len(segment) >= 2:
+                text = segment[0]
+                seg_style = segment[1]
+                # Skip newline-only segments
+                if text == "\n":
+                    continue
+                control = segment[2] if len(segment) >= 3 else None
+                label_segments.append(RichSegment(text, seg_style, control))
+            # Skip 1-tuple newlines (control-only segments)
 
-        if not label_lines:
+        if not label_segments:
             return strips
-
-        # Prepend label to first strip
-        label_segments = []
-        for segment in label_lines[0]:
-            if len(segment) == 2:
-                label_segments.append(RichSegment(segment[0], segment[1], None))
-            else:
-                label_segments.append(segment)
 
         first_strip = strips[0]
         new_segments = label_segments + list(first_strip)
         new_first = Strip(new_segments, width)
 
         return [new_first] + strips[1:]
+
+    def _create_role_label_strip(
+        self,
+        role: str,
+        width: int,
+        is_selected: bool,
+    ) -> Strip:
+        """Create a strip containing just the role label.
+
+        Args:
+            role: The role of the message.
+            width: The width to render at.
+            is_selected: Whether this block is selected.
+
+        Returns:
+            A Strip containing the role label on its own line.
+        """
+        # Get role label from configuration
+        role_config = self._role_labels.get(role)
+        role_label = role_config["label"] if role_config else role
+        base_style = role_config["style"] if role_config else Style(bold=True, color="grey62")
+
+        # Selection overrides style
+        if is_selected:
+            style = Style(bold=True, color="cyan")
+        else:
+            style = base_style
+
+        # Create label text and render WITHOUT padding to full width
+        label_text = Text(f"[{role_label}]", style=style)
+        # Create a console just for rendering options
+        console = Console()
+        # Use __rich_console__ to get segments without width padding
+        render_iter = label_text.__rich_console__(console, console.options)
+        label_segments: list[RichSegment] = []
+        for segment in render_iter:
+            # Segments are 3-tuples: (text, style, control)
+            # Or 2-tuples: (text, style)
+            if len(segment) >= 2:
+                text = segment[0]
+                seg_style = segment[1]
+                # Skip newline-only segments
+                if text == "\n":
+                    continue
+                control = segment[2] if len(segment) >= 3 else None
+                label_segments.append(RichSegment(text, seg_style, control))
+            # Skip 1-tuple newlines (control-only segments)
+
+        return Strip(label_segments, width)
 
     def _rerender_all_blocks(self) -> None:
         """Re-render all blocks with current width."""
@@ -861,24 +917,17 @@ class Conversation(ScrollView):
         # Convert to int for array indexing - scroll values can be floats
         data_y = int(scroll_y) + y
 
+        # Get width consistent with _get_content_width
+        width = self._get_content_width()
+
         # Check if we're past the content
         if data_y >= self._total_lines or data_y < 0:
-            width = (
-                self.scrollable_content_region.width
-                if self.scrollable_content_region
-                else _DEFAULT_WIDTH
-            )
             return Strip.blank(width, getattr(self, "rich_style", None))
 
         # Get the strip for this line
         strip = self._strips[data_y]
 
         # Handle horizontal scrolling by cropping the strip
-        width = (
-            self.scrollable_content_region.width
-            if self.scrollable_content_region
-            else _DEFAULT_WIDTH
-        )
         return strip.crop_extend(
             int(scroll_x), int(scroll_x) + width, getattr(self, "rich_style", None)
         )

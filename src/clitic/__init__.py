@@ -14,6 +14,7 @@ from clitic.exceptions import (
 )
 from clitic.history import DEFAULT_HISTORY_FILE, HistoryEntry, HistoryManager
 from clitic.plugins import (
+    CodePlugin,
     ContentPlugin,
     Highlighter,
     MarkdownPlugin,
@@ -21,7 +22,7 @@ from clitic.plugins import (
     Renderable,
 )
 from clitic.session import SessionInfo, SessionManager
-from clitic.widgets import Conversation, InputBar
+from clitic.widgets import Conversation, InputBar, SyntaxHighlight
 from clitic.widgets.conversation import BlockInfo
 
 __version__ = "0.1.0"
@@ -42,6 +43,7 @@ __all__ = [
   "HistoryEntry",
   "HistoryManager",
   # Plugin base classes
+  "CodePlugin",
   "ContentPlugin",
   "Highlighter",
   "MarkdownPlugin",
@@ -57,4 +59,5 @@ __all__ = [
   "BlockInfo",
   "Conversation",
   "InputBar",
+  "SyntaxHighlight",
 ]

@@ -10,9 +10,11 @@ from clitic.plugins.base import (
   ModeProvider,
   Renderable,
 )
+from clitic.plugins.code import CodePlugin
 from clitic.plugins.markdown import MarkdownPlugin
 
 __all__ = [
+  "CodePlugin",
   "ContentPlugin",
   "Highlighter",
   "MarkdownPlugin",

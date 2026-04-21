@@ -19,7 +19,7 @@ from textual.app import ComposeResult
 from textual.widgets import Footer, Header
 
 from clitic import App, Conversation, HistoryManager, InputBar, __version__
-from clitic.plugins import MarkdownPlugin
+from clitic.plugins import CodePlugin, MarkdownPlugin
 
 if TYPE_CHECKING:
     pass
@@ -82,6 +82,7 @@ class ShowcaseApp(App):
         self._conversation = conversation
         self._history = HistoryManager()
         # Register plugins for content rendering
+        self.register_plugin(CodePlugin())
         self.register_plugin(MarkdownPlugin())
 
     def compose(self) -> ComposeResult:
@@ -131,6 +132,21 @@ class ShowcaseApp(App):
             "print('Hello, World!')\n"
             "```",
             metadata={"content_type": "text/markdown"},
+        )
+
+        # Demonstrate code rendering with CodePlugin
+        conversation.append(
+            "assistant",
+            "def fibonacci(n: int) -> int:\n"
+            "    \"\"\"Calculate the nth Fibonacci number.\"\"\"\n"
+            "    if n <= 1:\n"
+            "        return n\n"
+            "    return fibonacci(n - 1) + fibonacci(n - 2)\n"
+            "\n"
+            "# Example usage\n"
+            "for i in range(10):\n"
+            "    print(f\"F({i}) = {fibonacci(i)}\")",
+            metadata={"content_type": "code/python"},
         )
 
         # Demonstrate block retrieval

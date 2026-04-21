@@ -47,6 +47,7 @@ dev = [
   "myst-parser>=2.0.0",
   "tox>=4.0.0",
   "coveralls>=3.0.0",
+  "types-Pygments>=2.0.0",
 ]
 
 [project.urls]
@@ -85,6 +86,10 @@ strict_equality = true
 
 [[tool.mypy.overrides]]
 module = "textual.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pygments.*"
 ignore_missing_imports = true
 
 [tool.ruff]
