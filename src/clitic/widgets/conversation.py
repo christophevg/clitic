@@ -750,27 +750,27 @@ class Conversation(ScrollView):
         else:
             style = base_style
 
-        # Create label text and render WITHOUT padding to full width
+        # Create label text and render with proper width padding
         label_text = Text(f"[{role_label}]", style=style)
-        # Create a console just for rendering options
-        console = Console()
-        # Use __rich_console__ to get segments without width padding
-        render_iter = label_text.__rich_console__(console, console.options)
-        label_segments: list[RichSegment] = []
-        for segment in render_iter:
-            # Segments are 3-tuples: (text, style, control)
-            # Or 2-tuples: (text, style)
-            if len(segment) >= 2:
-                text = segment[0]
-                seg_style = segment[1]
-                # Skip newline-only segments
-                if text == "\n":
-                    continue
-                control = segment[2] if len(segment) >= 3 else None
-                label_segments.append(RichSegment(text, seg_style, control))
-            # Skip 1-tuple newlines (control-only segments)
+        # Use Console with width to get properly padded lines
+        console = Console(width=width)
+        lines = list(console.render_lines(label_text))
 
-        return Strip(label_segments, width)
+        if not lines:
+            # Fallback: create a blank strip if rendering fails
+            return Strip.blank(width, getattr(self, "rich_style", None))
+
+        # Convert the first (and only) line to a Strip
+        # Use only the first line since the label is a single line
+        line = lines[0]
+        segments = []
+        for segment in line:
+            if len(segment) == 2:
+                segments.append(RichSegment(segment[0], segment[1], None))
+            else:
+                segments.append(segment)
+
+        return Strip(segments, width)
 
     def _rerender_all_blocks(self) -> None:
         """Re-render all blocks with current width."""

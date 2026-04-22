@@ -2,26 +2,6 @@
 
 ## Backlog
 
-### P0 - Critical Bug
-
-- [ ] **conversation-scroll-render-bug**
-  - Fix scrolling/rendering bug where lines bleed into each other
-  - **Problem Description:**
-    - When scrolling up (using mouse), lines from different blocks merge/bleed into each other
-    - First line of markdown/code plugin content duplicates into the role header line
-    - System lines sometimes merge into following blocks
-    - Suspected off-by-one error from adding role labels on separate lines
-  - **Investigation Areas:**
-    - `_cumulative_heights` calculation with header lines
-    - `get_block_id_at_line()` index mapping
-    - Strip indexing in `render_line()`
-    - Width consistency between strip creation and rendering
-  - **Reproduction:**
-    - Run `make showcase` with markdown/code content
-    - Scroll up using mouse
-    - Observe first line of plugin content bleeding into header
-  - **Dependencies:** None
-  - **Priority:** P0
 
 ### Plugin Integration (P1 - Essential)
 
@@ -698,6 +678,14 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
 
 ## Done
+
+- [x] **conversation-scroll-render-bug**
+  - Fixed scrolling/rendering bug where lines bleed into each other
+  - **Root Cause:** `_create_role_label_strip` used `Text.__rich_console__()` which created strips with inconsistent cell_length and cell_count
+  - **Fix:** Changed to use `Console(width=width).render_lines()` for consistent strip padding
+  - **Tests:** All 814 tests pass, including new scroll/render tests
+  - **Bug Analysis:** See `docs/bug-analysis/conversation-scroll-render-bug.md`
+  - **Completed:** 2026-04-22
 
 - [x] **plugin-conversation-integration**
   - Integrated ContentPlugin system with Conversation widget rendering
