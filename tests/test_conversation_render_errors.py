@@ -143,6 +143,8 @@ class TestCorruptedStripsList:
     """render_line should handle _strips shorter than _total_lines indicates.
 
     This tests IndexError prevention when _strips is corrupted/short.
+    The implementation uses len(_strips) for bounds checking to gracefully
+    handle mismatches between _strips and _total_lines.
     """
     conversation = Conversation()
 
@@ -157,25 +159,17 @@ class TestCorruptedStripsList:
       conversation._strips = conversation._strips[:-strips_to_remove] if strips_to_remove < len(conversation._strips) else []
 
       # Accessing a line that should exist but strip is missing
-      # Current behavior: IndexError
-      # Expected behavior: Should return blank strip or handle gracefully
-      # This test documents the current behavior
-      try:
-        # If there are still strips, try to render
-        if conversation._strips:
-          strip = conversation.render_line(0)
-          assert isinstance(strip, Strip)
+      # Should return blank strip gracefully
+      if conversation._strips:
+        strip = conversation.render_line(0)
+        assert isinstance(strip, Strip)
 
-        # Try to access a line that would be beyond the corrupted strips
-        if conversation._total_lines > len(conversation._strips):
-          # This should raise IndexError with current implementation
-          # because data_y < _total_lines but _strips[data_y] doesn't exist
-          with pytest.raises(IndexError):
-            conversation.render_line(len(conversation._strips))
-      except IndexError:
-        # Current implementation raises IndexError
-        # This documents the current behavior
-        pass
+      # Accessing beyond available strips should return blank, not raise
+      if conversation._total_lines > len(conversation._strips):
+        # Should return blank strip, not raise IndexError
+        strip = conversation.render_line(len(conversation._strips))
+        assert isinstance(strip, Strip)
+        assert strip.cell_length == 0 or strip.cell_length > 0  # Just verify it's a valid Strip
 
   def test_render_line_with_empty_strips_list(self) -> None:
     """render_line should handle empty _strips list."""

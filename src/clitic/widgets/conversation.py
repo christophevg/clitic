@@ -782,24 +782,31 @@ class Conversation(ScrollView):
     def _rerender_all_blocks(self) -> None:
         """Re-render all blocks with current width."""
         width = self._get_content_width()
-        self._strips.clear()
-        self._cumulative_heights.clear()
-        self._total_lines = 0
+
+        # Build new strips in temporary lists to avoid race conditions with render_line.
+        # During resize, Textual may call render_line while we're rebuilding, so we
+        # must ensure _strips is always in a consistent state.
+        new_strips: list[Strip] = []
+        new_cumulative_heights: list[int] = []
+        new_total_lines = 0
 
         for i, block in enumerate(self._blocks):
             is_selected = i == self._selected_index
             block_strips = self._render_block_to_strips(block, width, is_selected=is_selected)
             block.line_count = len(block_strips)
-            self._strips.extend(block_strips)
-            self._total_lines += block.line_count
-            self._cumulative_heights.append(self._total_lines)
+            new_strips.extend(block_strips)
+            new_total_lines += block.line_count
+            new_cumulative_heights.append(new_total_lines)
 
+        # Atomic swap of all data at once
+        self._strips = new_strips
+        self._cumulative_heights = new_cumulative_heights
+        self._total_lines = new_total_lines
         self._last_width = width
         # Use actual content region width for virtual size
         region = self.scrollable_content_region
         vwidth = region.width if region and region.width > 0 else width
         self.virtual_size = Size(vwidth, self._total_lines)
-        # Don't call refresh() here - let the caller handle it
 
     def watch_scroll_y(self, old: float, new: float) -> None:
         """Watch for scroll position changes to manage auto_scroll state.
@@ -816,14 +823,15 @@ class Conversation(ScrollView):
         self._check_and_restore_pruned_blocks(_scroll_y=new)
 
     def on_resize(self, event: Resize) -> None:
-        """Handle resize events to re-render content with new width.
-
-        Args:
-            event: The resize event.
-        """
+        """Handle resize events to re-render content with new width."""
         new_width = self._get_content_width()
         if new_width != self._last_width and self._blocks:
             self._rerender_all_blocks()
+            # Force clear Textual's caches to prevent stale content
+            self.clear_cached_dimensions()
+            self._clear_arrangement_cache()
+            # Force full redraw by invalidating the entire widget region
+            self.refresh(layout=True)
 
         self._update_auto_scroll_from_scroll_position()
 
@@ -924,19 +932,39 @@ class Conversation(ScrollView):
         # Convert to int for array indexing - scroll values can be floats
         data_y = int(scroll_y) + y
 
-        # Get width consistent with _get_content_width
+        # Get the current content width for this render pass.
         width = self._get_content_width()
 
-        # Check if we're past the content
-        if data_y >= self._total_lines or data_y < 0:
+        # Check bounds before accessing strips
+        if data_y < 0:
+            return Strip.blank(width, getattr(self, "rich_style", None))
+
+        # Bounds check - use len(_strips) not _total_lines for array access
+        if not self._strips or data_y >= len(self._strips):
             return Strip.blank(width, getattr(self, "rich_style", None))
 
         # Get the strip for this line
         strip = self._strips[data_y]
 
+        # Handle corrupted strip (None value)
+        if strip is None:
+            return Strip.blank(width, getattr(self, "rich_style", None))
+
+        # Get the background style from the last segment for extension
+        # This ensures that when cropping/extending, the padding uses the
+        # same background color as the content, preventing visual artifacts
+        extend_style = None
+        strip_segments = list(strip)
+        if strip_segments:
+            last_seg = strip_segments[-1]
+            if last_seg.style:
+                extend_style = last_seg.style
+        if extend_style is None:
+            extend_style = getattr(self, "rich_style", None)
+
         # Handle horizontal scrolling by cropping the strip
         return strip.crop_extend(
-            int(scroll_x), int(scroll_x) + width, getattr(self, "rich_style", None)
+            int(scroll_x), int(scroll_x) + width, extend_style
         )
 
     def append(

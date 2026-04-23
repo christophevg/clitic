@@ -6,7 +6,6 @@ with color-coded line annotations using Rich's Text renderer.
 
 from __future__ import annotations
 
-from rich.cells import cell_len
 from rich.segment import Segment as RichSegment
 from rich.style import Style
 from rich.text import Text
@@ -140,6 +139,8 @@ class DiffPlugin(ContentPlugin):
     Returns:
       A list of Strip objects, one per line.
     """
+    from rich.cells import cell_len
+
     diff_text = str(content)
     lines = diff_text.split("\n")
     strips: list[Strip] = []
@@ -151,35 +152,49 @@ class DiffPlugin(ContentPlugin):
       if line.startswith("--- ") or line.startswith("+++ "):
         style = self._line_style(line)
         segments.append(RichSegment(line, style))
-        strips.append(Strip(segments, width))
+        # Always pad header lines to full width to avoid crop_extend issues
+        line_cell_len = cell_len(line)
+        if line_cell_len < width:
+          segments.append(RichSegment(" " * (width - line_cell_len), style))
+        strips.append(Strip(segments, None))  # Let Textual calculate cell length
       elif line.startswith("+"):
         text = line[1:]
-        text_len = cell_len(text)
-        padding = max(0, width - 1 - text_len)
+        text_cell_len = cell_len(text)
+        # Calculate total cells used by prefix and text
+        total_cells = 1 + text_cell_len  # 1 for the '+' prefix
+        padding = max(0, width - total_cells)
 
+        # Use separate segments for prefix, text, and padding
         segments.append(RichSegment("+", _DIFF_ADDED_PREFIX_STYLE))
         if text:
           segments.append(RichSegment(text, _DIFF_ADDED_TEXT_STYLE))
-        if padding > 0:
-          segments.append(RichSegment(" " * padding, _DIFF_ADDED_TEXT_STYLE))
+        # Always add padding to ensure strip cell length matches width
+        # This prevents crop_extend from having mismatched cached vs actual length
+        segments.append(RichSegment(" " * padding, _DIFF_ADDED_TEXT_STYLE))
 
-        strips.append(Strip(segments, width))
+        strips.append(Strip(segments, None))  # Let Textual calculate cell length
       elif line.startswith("-"):
         text = line[1:]
-        text_len = cell_len(text)
-        padding = max(0, width - 1 - text_len)
+        text_cell_len = cell_len(text)
+        total_cells = 1 + text_cell_len  # 1 for the '-' prefix
+        padding = max(0, width - total_cells)
 
+        # Use separate segments for prefix, text, and padding
         segments.append(RichSegment("-", _DIFF_REMOVED_PREFIX_STYLE))
         if text:
           segments.append(RichSegment(text, _DIFF_REMOVED_TEXT_STYLE))
-        if padding > 0:
-          segments.append(RichSegment(" " * padding, _DIFF_REMOVED_TEXT_STYLE))
+        # Always add padding to ensure strip cell length matches width
+        segments.append(RichSegment(" " * padding, _DIFF_REMOVED_TEXT_STYLE))
 
-        strips.append(Strip(segments, width))
+        strips.append(Strip(segments, None))  # Let Textual calculate cell length
       else:
         style = self._line_style(line)
         segments.append(RichSegment(line, style))
-        strips.append(Strip(segments, width))
+        # Pad other lines to full width
+        line_cell_len = cell_len(line)
+        if line_cell_len < width:
+          segments.append(RichSegment(" " * (width - line_cell_len), style))
+        strips.append(Strip(segments, None))  # Let Textual calculate cell length
 
     return strips
 

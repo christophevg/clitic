@@ -365,6 +365,7 @@ class TestDiffPluginRenderToStrips:
     # Third segment: padding to full width
     assert segments[2].text == " " * 29
     assert segments[2].style == Style(bgcolor="#e3fedf")
+    assert len(segments) == 3
 
   def test_render_to_strips_removed_line_full_width(self) -> None:
     """Removed line should have background spanning full width."""
@@ -381,25 +382,33 @@ class TestDiffPluginRenderToStrips:
     # Third segment: padding to full width
     assert segments[2].text == " " * 32
     assert segments[2].style == Style(bgcolor="#f9dddd")
+    assert len(segments) == 3
 
   def test_render_to_strips_no_padding_when_text_fills_width(self) -> None:
-    """No padding when text already fills the width."""
+    """Padding segment should still be added (empty) when text fills width."""
     plugin = DiffPlugin()
     strips = plugin.render_to_strips("+" + "x" * 39, 40)
     strip = strips[0]
     segments = list(strip)
+    # First segment: + prefix
     assert segments[0].text == "+"
+    # Second segment: text
     assert segments[1].text == "x" * 39
-    assert len(segments) == 2
+    # Third segment: empty padding (width is exactly filled, so padding is 0 chars)
+    assert segments[2].text == ""
+    assert len(segments) == 3
 
-  def test_render_to_strips_header_no_background(self) -> None:
-    """Header lines should not have background padding."""
+  def test_render_to_strips_header_has_padding(self) -> None:
+    """Header lines should have padding to full width."""
     plugin = DiffPlugin()
     strips = plugin.render_to_strips("--- old_file.py", 40)
     strip = strips[0]
     segments = list(strip)
     assert segments[0].text == "--- old_file.py"
     assert segments[0].style == Style(color="cyan", bold=True)
+    # Second segment: padding to fill width (40 - 15 = 25 spaces)
+    assert segments[1].text == " " * 25
+    assert len(segments) == 2
 
   def test_render_to_strips_multiple_lines(self) -> None:
     """render_to_strips should handle multiple lines."""
@@ -408,7 +417,11 @@ class TestDiffPluginRenderToStrips:
     assert len(strips) == 3
     assert list(strips[0])[0].text == "--- a/file.py"
     assert list(strips[1])[0].text == "+++ b/file.py"
-    assert list(strips[2])[0].text == "+"
+    # Added line: prefix + text + padding segments
+    added_segments = list(strips[2])
+    assert added_segments[0].text == "+"
+    assert added_segments[1].text == "added"
+    assert added_segments[2].text == " " * 34
 
   def test_render_to_strips_empty_added_line(self) -> None:
     """Added line with just + should pad full width."""
@@ -416,8 +429,11 @@ class TestDiffPluginRenderToStrips:
     strips = plugin.render_to_strips("+", 40)
     strip = strips[0]
     segments = list(strip)
+    # First segment: + prefix
     assert segments[0].text == "+"
     assert segments[0].style == Style(color="green", bold=True, bgcolor="#e3fedf")
+    # Second segment: full padding (no text segment since text is empty)
     assert segments[1].text == " " * 39
     assert segments[1].style == Style(bgcolor="#e3fedf")
+    assert len(segments) == 2
 
