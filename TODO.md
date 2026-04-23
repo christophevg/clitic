@@ -5,18 +5,19 @@
 
 ### Plugin Integration (P1 - Essential)
 
-- [ ] **syntax-highlighting-widget**
+- [x] **syntax-highlighting-widget**
   - Create generic syntax highlighting widget for code content
   - **Acceptance Criteria:**
-    - [ ] `src/clitic/widgets/syntax_highlight.py` exists
-    - [ ] Supports multiple languages (Python, JavaScript, Bash, etc.)
-    - [ ] Uses Rich/pygments for syntax highlighting
-    - [ ] Configurable theme (maps to app theme)
-    - [ ] Works within Conversation's virtual rendering
-    - [ ] Can be used standalone or embedded in other widgets
-    - [ ] Unit tests for highlighting
+    - [x] `src/clitic/widgets/syntax_highlight.py` exists
+    - [x] Supports multiple languages (Python, JavaScript, Bash, etc.)
+    - [x] Uses Rich/pygments for syntax highlighting
+    - [x] Configurable theme (maps to app theme)
+    - [x] Works within Conversation's virtual rendering
+    - [x] Can be used standalone or embedded in other widgets
+    - [x] Unit tests for highlighting
   - **Dependencies:** None
   - **Priority:** P1
+  - **Completed:** 2026-04-21
 
 ### Testing Coverage Improvements
 
@@ -283,39 +284,41 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
 
 ### Phase 5: Content Plugins (P1 - Essential)
 
-- [ ] **plugin-markdown-basic**
+- [x] **plugin-markdown-basic**
   - Create Markdown renderer with basic elements (FR-009)
   - **Acceptance Criteria:**
     - [x] `src/clitic/plugins/markdown.py` exists with MarkdownPlugin class
     - [x] Renders headers (h1-h6), paragraphs, lists
     - [x] Renders inline code and code blocks
     - [x] Renders links (clickable)
-    - [ ] Integrates with Conversation via plugin interface
+    - [x] Integrates with Conversation via plugin interface
     - [x] Unit tests for markdown rendering
   - **Dependencies:** plugin-base-classes, conversation-basic
   - **Priority:** P1
-  - **Status:** Plugin class implemented, integration pending
+  - **Completed:** 2026-04-21
 
-- [ ] **plugin-markdown-code-blocks**
+- [x] **plugin-markdown-code-blocks**
   - Add syntax highlighting in code blocks (FR-009)
   - **Acceptance Criteria:**
-    - [ ] Syntax highlighting by language tag
-    - [ ] Support common languages (Python, JavaScript, Bash)
-    - [ ] Extensible highlighter interface
-    - [ ] Fallback to plain text for unknown languages
+    - [x] Syntax highlighting by language tag
+    - [x] Support common languages (Python, JavaScript, Bash)
+    - [x] Extensible highlighter interface
+    - [x] Fallback to plain text for unknown languages
   - **Dependencies:** plugin-markdown-basic, syntax-highlighting-widget
   - **Priority:** P1
+  - **Completed:** 2026-04-21
 
-- [ ] **plugin-diff-unified**
+- [x] **plugin-diff-unified**
   - Create unified diff renderer (FR-010)
   - **Acceptance Criteria:**
-    - [ ] `src/clitic/plugins/diff.py` exists with DiffPlugin class
-    - [ ] Parses unified diff format
-    - [ ] Shows +, -, ~ line annotations
-    - [ ] Syntax highlighting in diff context
-    - [ ] Unit tests for diff parsing and rendering
+    - [x] `src/clitic/plugins/diff.py` exists with DiffPlugin class
+    - [x] Parses unified diff format
+    - [x] Shows +, -, ~ line annotations
+    - [x] Syntax highlighting in diff context
+    - [x] Unit tests for diff parsing and rendering
   - **Dependencies:** plugin-base-classes, conversation-basic
   - **Priority:** P1
+  - **Completed:** 2026-04-23
 
 - [ ] **plugin-terminal-ansi**
   - Create terminal/ANSI renderer (FR-011)
@@ -678,6 +681,23 @@ These tasks address gaps identified by the testing-engineer review (see `docs/de
   - **Priority:** P2
 
 ## Done
+
+- [x] **plugin-diff-unified**
+  - Created unified diff renderer with DiffPlugin class
+  - **Acceptance Criteria:**
+    - [x] `src/clitic/plugins/diff.py` exists with DiffPlugin class
+    - [x] Parses unified diff format
+    - [x] Shows +, -, ~ line annotations with color coding
+    - [x] Color-coded rendering: green (+), red (-), yellow (@@), cyan (---/+++)
+    - [x] Handles git extended headers (diff, index, new, deleted, rename)
+    - [x] Unit tests for diff parsing and rendering (42 tests, 100% coverage)
+  - **Files Modified:**
+    - `src/clitic/plugins/diff.py` - New DiffPlugin implementation
+    - `src/clitic/plugins/__init__.py` - Exported DiffPlugin
+    - `src/clitic/__main__.py` - Added DiffPlugin to showcase with demo diff block
+    - `tests/test_diff_plugin.py` - New test suite (42 tests)
+  - **Total: 844 tests passing, 84% coverage**
+  - **Completed:** 2026-04-23
 
 - [x] **conversation-scroll-render-bug**
   - Fixed scrolling/rendering bug where lines bleed into each other

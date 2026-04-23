@@ -570,6 +570,11 @@ class Conversation(ScrollView):
     ) -> list[Strip] | None:
         """Render content using plugin to strips. Returns None on failure.
 
+        If the plugin has a ``render_to_strips`` method, it is called directly
+        with the content and width, bypassing the generic renderable conversion.
+        This allows plugins to control width-aware rendering (e.g. full-width
+        background colors).
+
         Args:
             plugin: The plugin to use for rendering.
             content: The content to render.
@@ -581,6 +586,8 @@ class Conversation(ScrollView):
             List of Strip objects, or None on failure.
         """
         try:
+            if hasattr(plugin, "render_to_strips"):
+                return cast(list[Strip], plugin.render_to_strips(content, width))
             renderable = plugin.render(content)
             return self._renderable_to_strips(renderable, width)
         except Exception:

@@ -19,7 +19,7 @@ from textual.app import ComposeResult
 from textual.widgets import Footer, Header
 
 from clitic import App, Conversation, HistoryManager, InputBar, __version__
-from clitic.plugins import CodePlugin, MarkdownPlugin
+from clitic.plugins import CodePlugin, DiffPlugin, MarkdownPlugin
 
 if TYPE_CHECKING:
     pass
@@ -83,6 +83,7 @@ class ShowcaseApp(App):
         self._history = HistoryManager()
         # Register plugins for content rendering
         self.register_plugin(CodePlugin())
+        self.register_plugin(DiffPlugin())
         self.register_plugin(MarkdownPlugin())
 
     def compose(self) -> ComposeResult:
@@ -147,6 +148,23 @@ class ShowcaseApp(App):
             "for i in range(10):\n"
             "    print(f\"F({i}) = {fibonacci(i)}\")",
             metadata={"content_type": "code/python"},
+        )
+
+        # Demonstrate diff rendering with DiffPlugin
+        conversation.append(
+            "assistant",
+            "diff --git a/example.py b/example.py\n"
+            "index 1234567..abcdefg 100644\n"
+            "--- a/example.py\n"
+            "+++ b/example.py\n"
+            "@@ -10,7 +10,7 @@\n"
+            " def calculate(x):\n"
+            "-    return x * 2\n"
+            "+    return x * 3\n"
+            "\n"
+            " def helper():\n"
+            "     pass",
+            metadata={"content_type": "text/x-diff"},
         )
 
         # Demonstrate block retrieval

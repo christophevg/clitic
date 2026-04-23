@@ -11,11 +11,13 @@ from clitic.plugins.base import (
   Renderable,
 )
 from clitic.plugins.code import CodePlugin
+from clitic.plugins.diff import DiffPlugin
 from clitic.plugins.markdown import MarkdownPlugin
 
 __all__ = [
   "CodePlugin",
   "ContentPlugin",
+  "DiffPlugin",
   "Highlighter",
   "MarkdownPlugin",
   "ModeProvider",
