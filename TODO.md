@@ -2,6 +2,16 @@
 
 ## Backlog
 
+### Standard Project Setup
+
+- [ ] **migrate-to-hatchling** (2026-04-29)
+  - Migrate from setuptools.build_meta to hatchling
+  - Update pyproject.toml: change build-backend to "hatchling.build"
+  - Replace `[tool.setuptools.*]` sections with `[tool.hatch.build.*]`
+  - Update packages config: `[tool.hatch.build.targets.wheel] packages = ["src/clitic"]`
+  - Verify all tool configs remain in pyproject.toml
+  - Acceptance: `pip install -e ".[dev]"` works, `make test` passes, `python -m build` succeeds
+  - See: c3 skill `python-project` for hatchling configuration
 
 ### Plugin Integration (P1 - Essential)
 

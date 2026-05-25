@@ -1,13 +1,12 @@
 # clitic
 
-[![Documentation](https://readthedocs.org/projects/clitic/badge/?version=latest)](https://clitic.readthedocs.io/)
-[![PyPI version](https://img.shields.io/pypi/v/clitic.svg)](https://pypi.org/project/clitic/)
-[![PyPI pyversions](https://img.shields.io/pypi/pyversions/clitic.svg)](https://pypi.org/project/clitic/)
-[![Build Status](https://github.com/christophevg/clitic/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/christophevg/clitic/actions/workflows/ci.yml)
-[![Coverage Status](https://coveralls.io/repos/github/christophevg/clitic/badge.svg?branch=master)](https://coveralls.io/github/christophevg/clitic)
-[![License: MIT](https://img.shields.io/github/license/christophevg/clitic)](https://github.com/christophevg/clitic/blob/master/LICENSE)
-[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://docs.astral.sh/ruff/)
-[![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://mypy-lang.org/)
+[![PyPI](https://img.shields.io/pypi/v/clitic.svg)][pypi]
+[![Python](https://img.shields.io/pypi/pyversions/clitic.svg)][pypi]
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)][uv]
+[![CI](https://img.shields.io/github/actions/workflow/status/christophevg/clitic/ci.yml.svg)][ci]
+[![Coverage](https://img.shields.io/coveralls/github/christophevg/clitic.svg)][coveralls]
+[![License](https://img.shields.io/github/license/christophevg/clitic.svg)][license]
+[![Agentic](https://img.shields.io/badge/workflow-agentic-blueviolet?style=flat-square)](https://christophe.vg/about/Agentic-Workflow)
 
 A Python package for building rich, interactive CLI applications.
 
@@ -153,3 +152,9 @@ See [CHANGELOG](docs/development/changelog.md) for version history.
 ## License
 
 MIT License
+
+[pypi]: https://pypi.org/project/clitic/
+[uv]: https://docs.astral.sh/uv/
+[ci]: https://github.com/christophevg/clitic/actions
+[coveralls]: https://coveralls.io/github/christophevg/clitic
+[license]: https://github.com/christophevg/clitic/blob/master/LICENSE

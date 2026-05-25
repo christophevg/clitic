@@ -1,182 +1,110 @@
 -include ~/.claude/Makefile
 
-# Virtual environment configuration
-VENV_NAME := clitic
-PYTHON_VERSION := 3.11
+.PHONY: env-dev env-run install-pythons test test-cov test-all test-benchmark format lint typecheck check showcase screenshot docs docs-view build pre-publish publish publish-test clean clean-all help
 
-.PHONY: setup activate install test test-all test-3.10 test-3.11 test-3.12 test-file test-one test-benchmark test-full typecheck lint format build publish clean clean-all help showcase docs docs-view
+## Environment
 
-# Guard to ensure virtual environment is active
-define check_venv
-	@if [ -z "$(VIRTUAL_ENV)" ] && [ "$(shell pyenv version-name 2>/dev/null)" != "$(VENV_NAME)" ]; then \
-		echo "Error: No virtual environment detected. Run 'pyenv activate $(VENV_NAME)' or 'source .venv/bin/activate' first."; \
-		exit 1; \
-	fi
-endef
+env-dev: ## Install all dependencies (dev + docs)
+	uv sync --all-extras
 
-## Setup
+env-run: ## Install runtime dependencies only
+	uv sync
 
-setup: ## Create pyenv virtualenv and install dependencies
-	@echo "Creating pyenv virtualenv '$(VENV_NAME)' with Python $(PYTHON_VERSION)..."
-	@if pyenv versions | grep -q "$(VENV_NAME)"; then \
-		echo "Virtualenv '$(VENV_NAME)' already exists."; \
-	else \
-		pyenv virtualenv $(PYTHON_VERSION) $(VENV_NAME); \
-		echo "Created virtualenv '$(VENV_NAME)'."; \
-	fi
-	@echo ""
-	@echo "To activate, run:"
-	@echo "  pyenv activate $(VENV_NAME)"
-	@echo ""
-	@echo "Then install dependencies:"
-	@echo "  make install"
-
-activate: ## Show instructions to activate the virtual environment
-	@echo "Activate the virtual environment:"
-	@echo "  pyenv activate $(VENV_NAME)"
-	@echo ""
-	@echo "Or add to .python-version for automatic activation:"
-	@echo "  echo '$(VENV_NAME)' > .python-version"
-
-install: ## Install package in development mode with dev dependencies
-	$(check_venv)
-	pip install -e ".[dev]"
+install-pythons: ## Install Python 3.10, 3.11, 3.12
+	uv python install 3.10 3.11 3.12
 
 ## Testing
 
-test: ## Run all tests with coverage (excludes benchmark tests)
-	$(check_venv)
-	pytest -m "not benchmark"
+test: env-dev ## Run tests (usage: make test / optional: TEST=file|file:test_name)
+	uv run pytest -v -m "not benchmark" $(TEST)
 
-test-benchmark: ## Run only benchmark tests (performance tests)
-	$(check_venv)
-	pytest -m benchmark
+test-cov: env-dev ## Run tests with coverage
+	uv run pytest --cov=src --cov-report=term-missing $(TEST)
 
-test-all-benchmarks: ## Run all tests including benchmarks
-	$(check_venv)
-	pytest
+test-all: env-dev ## Run tests on all Python versions
+	uv run tox
 
-test-file: ## Run specific test file (usage: make test-file FILE=tests/test_package.py)
-	$(check_venv)
-	pytest $(FILE)
-
-test-one: ## Run specific test function (usage: make test-one TEST=tests/test_package.py::test_import)
-	$(check_venv)
-	pytest $(TEST)
-
-test-all: ## Run tests against all Python versions (3.10, 3.11, 3.12), excludes benchmarks
-	tox
-
-test-full: ## Run all tests including benchmarks against current Python
-	$(check_venv)
-	pytest
-
-test-3.10: ## Run tests against Python 3.10 only
-	tox -e py310
-
-test-3.11: ## Run tests against Python 3.11 only
-	tox -e py311
-
-test-3.12: ## Run tests against Python 3.12 only
-	tox -e py312
+test-benchmark: env-dev ## Run only benchmark tests
+	uv run pytest -m benchmark
 
 ## Showcase
 
-showcase: ## Run the clitic showcase application
-	$(check_venv)
-	python -m clitic
+showcase: env-run ## Run the clitic showcase application
+	uv run python -m clitic
 
 NOW := $(shell date +"%Y%m%d-%H%M%S")
 
-screenshot:
-	screencapture -iW media/current-showcase-${NOW}.png
-	cp media/current-showcase-${NOW}.png media/current-showcase.png
-	cp media/current-showcase-${NOW}.png docs/_static/current-showcase.png
-
-## Documentation
-
-docs: ## Build HTML documentation
-	$(check_venv)
-	cd docs && make html
-
-docs-view: docs ## Build and open documentation in browser
-	@echo "Opening documentation..."
-	@if command -v open >/dev/null; then \
-		open docs/_build/html/index.html; \
-	elif command -v xdg-open >/dev/null; then \
-		xdg-open docs/_build/html/index.html; \
-	fi
+screenshot: ## Capture screenshot of showcase
+	screencapture -iW media/current-showcase-$(NOW).png
+	cp media/current-showcase-$(NOW).png media/current-showcase.png
+	cp media/current-showcase-$(NOW).png docs/_static/current-showcase.png
 
 ## Code Quality
 
-typecheck: ## Run mypy type checking
-	$(check_venv)
-	mypy --strict src
+format: env-dev ## Format code and fix linting issues
+	uv run ruff format src tests
+	uv run ruff check --fix src tests
 
-lint: ## Run ruff linting
-	$(check_venv)
-	ruff check src tests
+lint: env-dev ## Check code for linting issues
+	uv run ruff check src tests
 
-format: ## Format code with ruff
-	$(check_venv)
-	ruff format src tests
+typecheck: env-dev ## Run type checking
+	uv run mypy --strict src
 
-check: typecheck lint ## Run all checks (typecheck + lint)
+check: format lint typecheck test ## Run all quality checks
+
+## Documentation
+
+docs: env-dev ## Build HTML documentation
+	cd docs && uv run sphinx-build -M html . _build
+
+docs-view: docs ## Build and open documentation
+	open docs/_build/html/index.html
 
 ## Build & Publish
 
-build: ## Build package distributions
-	$(check_venv)
-	python -m build
+build: ## Build distribution packages
+	uv build
 
-publish: build ## Build and publish to PyPI
-	$(check_venv)
-	twine upload dist/*
+pre-publish: check ## Pre-publication checks (run before publishing)
+	@echo "Checking for relative image paths in README..."
+	@grep -n '!\[.*](media/' README.md && (echo "ERROR: Relative image paths found - use raw GitHub URLs for PyPI"; exit 1) || echo "OK: No relative image paths"
+	@echo "Checking version sync..."
+	@VERSION_PY=$$(grep '^version =' pyproject.toml | cut -d'"' -f2); \
+	VERSION_INIT=$$(grep '^__version__ = ' src/clitic/__init__.py | cut -d'"' -f2); \
+	if [ "$$VERSION_PY" != "$$VERSION_INIT" ]; then \
+		echo "ERROR: Version mismatch - pyproject.toml ($$VERSION_PY) vs __init__.py ($$VERSION_INIT)"; \
+		exit 1; \
+	fi; \
+	echo "OK: Versions match ($$VERSION_PY)"
+	@echo "Pre-publication checks passed"
 
-publish-test: build ## Build and publish to TestPyPI
-	$(check_venv)
-	twine upload --repository testpypi dist/*
+publish: clean build ## Publish to PyPI (runs pre-publish checks)
+	@$(MAKE) pre-publish
+	uv run twine upload dist/*
+
+publish-test: build ## Publish to TestPyPI
+	uv run twine upload --repository testpypi dist/*
 
 ## Cleanup
 
 clean: ## Remove build artifacts
-	rm -rf build/
-	rm -rf dist/
-	rm -rf *.egg-info
-	rm -rf src/*.egg-info
-	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+	rm -rf dist/ build/ *.egg-info .pytest_cache .coverage .mypy_cache .ruff_cache
+	rm -rf docs/_build
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
-clean-all: clean ## Remove virtualenv as well
-	@echo "Removing pyenv virtualenv '$(VENV_NAME)'..."
-	-pyenv deactivate 2>/dev/null || true
-	-pyenv virtualenv-delete -f $(VENV_NAME) 2>/dev/null || true
-	@echo "Virtualenv removed."
+clean-all: clean ## Remove virtualenv and lock file
+	rm -rf .venv uv.lock
 
 ## Help
 
 help: ## Show this help message
 	@echo "Usage: make [target]"
 	@echo ""
-	@echo "Virtual Environment:"
-	@echo "  make setup        - Create pyenv virtualenv '$(VENV_NAME)'"
-	@echo "  make activate     - Show activation instructions"
-	@echo "  make install      - Install dependencies (requires venv)"
-	@echo ""
-	@echo "Testing:"
-	@echo "  make test         - Run tests (excludes benchmarks)"
-	@echo "  make test-benchmark - Run only benchmark tests"
-	@echo "  make test-full    - Run all tests including benchmarks"
-	@echo "  make test-all     - Run tests on all Python versions (3.10, 3.11, 3.12)"
-	@echo ""
-	@echo "Showcase:"
-	@echo "  make showcase     - Run the feature showcase application"
-	@echo "  make screenshot   - Capture screenshot of showcase"
-	@echo ""
-	@echo "Documentation:"
-	@echo "  make docs         - Build HTML documentation"
-	@echo "  make docs-view    - Build and open documentation in browser"
-	@echo ""
 	@echo "Targets:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | grep -v "setup\|activate\|install\|showcase\|docs\|test" | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | grep -v "install-pythons\|sync" | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+
+# Project-specific targets (review and integrate)
+# - showcase: Run the feature showcase application
+# - screenshot: Capture screenshot of showcase for docs
+# - test-benchmark: Run only benchmark tests (pytest -m benchmark)
