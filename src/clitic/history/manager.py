@@ -377,13 +377,9 @@ class HistoryManager:
             entries.append(entry)
           except (json.JSONDecodeError, KeyError, ValueError) as e:
             # Log warning but continue loading
-            logger.warning(
-              f"Skipping malformed history entry at line {line_num}: {e}"
-            )
+            logger.warning(f"Skipping malformed history entry at line {line_num}: {e}")
 
-      self._entries = (
-        entries[-self._max_entries :] if self._max_entries > 0 else entries
-      )
+      self._entries = entries[-self._max_entries :] if self._max_entries > 0 else entries
 
     except OSError as e:
       raise HistoryError(

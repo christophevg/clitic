@@ -5,21 +5,21 @@ clitic - A Python package for building rich, interactive CLI applications.
 from clitic.completion import Completion, CompletionProvider
 from clitic.core import App
 from clitic.exceptions import (
-    CliticError,
-    ConfigurationError,
-    HistoryError,
-    PluginError,
-    RenderError,
-    SessionError,
+  CliticError,
+  ConfigurationError,
+  HistoryError,
+  PluginError,
+  RenderError,
+  SessionError,
 )
 from clitic.history import DEFAULT_HISTORY_FILE, HistoryEntry, HistoryManager
 from clitic.plugins import (
-    CodePlugin,
-    ContentPlugin,
-    Highlighter,
-    MarkdownPlugin,
-    ModeProvider,
-    Renderable,
+  CodePlugin,
+  ContentPlugin,
+  Highlighter,
+  MarkdownPlugin,
+  ModeProvider,
+  Renderable,
 )
 from clitic.session import SessionInfo, SessionManager
 from clitic.widgets import Conversation, InputBar, SyntaxHighlight

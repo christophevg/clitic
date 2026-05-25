@@ -54,24 +54,18 @@ class TestConversationScrollRenderBug:
 
     # Should have: role_label_strip + 3 content strips + blank_strip
     # Total: 5 strips
-    assert len(conversation._strips) == 5, (
-      f"Expected 5 strips, got {len(conversation._strips)}"
-    )
+    assert len(conversation._strips) == 5, f"Expected 5 strips, got {len(conversation._strips)}"
 
     # First strip should be the role label
     first_strip = conversation._strips[0]
     # Get text content from segments
     first_text = "".join(seg.text for seg in first_strip if hasattr(seg, "text"))
-    assert "Assistant" in first_text, (
-      f"First strip should contain role label, got: {first_text}"
-    )
+    assert "Assistant" in first_text, f"First strip should contain role label, got: {first_text}"
 
     # Last strip should be blank
     last_strip = conversation._strips[-1]
     last_text = "".join(seg.text for seg in last_strip if hasattr(seg, "text"))
-    assert last_text.strip() == "", (
-      f"Last strip should be blank, got: {last_text}"
-    )
+    assert last_text.strip() == "", f"Last strip should be blank, got: {last_text}"
 
   def test_cumulative_heights_correct_with_plugin_content(self) -> None:
     """Verify cumulative heights correctly track plugin content lines."""
@@ -121,9 +115,7 @@ class TestConversationScrollRenderBug:
     # Check all strips have the same width
     widths = [strip.cell_length for strip in conversation._strips]
     # All widths should be the same
-    assert len(set(widths)) == 1, (
-      f"All strips should have the same width, got: {widths}"
-    )
+    assert len(set(widths)) == 1, f"All strips should have the same width, got: {widths}"
 
   def test_render_line_returns_correct_strip(self) -> None:
     """Verify render_line returns the correct strip for each line."""
@@ -172,9 +164,7 @@ class TestConversationScrollRenderBug:
       )
 
     # Total: 4 + 3 = 7 strips
-    assert len(conversation._strips) == 7, (
-      f"Expected 7 strips, got {len(conversation._strips)}"
-    )
+    assert len(conversation._strips) == 7, f"Expected 7 strips, got {len(conversation._strips)}"
 
     # Verify ordering
     # Strip 0: Assistant role label
@@ -216,16 +206,12 @@ class TestConversationScrollRenderBug:
     # Line 0-3 should be block 0
     for line in range(4):
       block_id = conversation.get_block_id_at_line(line)
-      assert block_id == conversation._blocks[0].info.block_id, (
-        f"Line {line} should be in block 0"
-      )
+      assert block_id == conversation._blocks[0].info.block_id, f"Line {line} should be in block 0"
 
     # Line 4-6 should be block 1
     for line in range(4, 7):
       block_id = conversation.get_block_id_at_line(line)
-      assert block_id == conversation._blocks[1].info.block_id, (
-        f"Line {line} should be in block 1"
-      )
+      assert block_id == conversation._blocks[1].info.block_id, f"Line {line} should be in block 1"
 
   def test_role_label_strip_width_matches_content_width(self) -> None:
     """Verify role label strip width matches content strips width."""
@@ -244,9 +230,7 @@ class TestConversationScrollRenderBug:
 
     # All strips should have the same width
     widths = [strip.cell_length for strip in conversation._strips]
-    assert len(set(widths)) == 1, (
-      f"All strips should have same width, got: {widths}"
-    )
+    assert len(set(widths)) == 1, f"All strips should have same width, got: {widths}"
 
   def test_strips_remain_consistent_after_rerender(self) -> None:
     """Verify strips remain consistent after re-rendering all blocks."""
@@ -275,7 +259,9 @@ class TestConversationScrollRenderBug:
     conversation._rerender_all_blocks()
 
     # Verify strip contents are preserved (same order)
-    for i, (strip, original_text) in enumerate(zip(conversation._strips, original_texts)):
+    for i, (strip, original_text) in enumerate(
+      zip(conversation._strips, original_texts, strict=True)
+    ):
       text = "".join(seg.text for seg in strip if hasattr(seg, "text"))
       # Normalize whitespace for comparison
       assert text.strip() == original_text.strip(), (
@@ -320,7 +306,9 @@ class TestConversationScrollRenderBug:
         await pilot.pause()
 
         # After scrolling to top, strips should still be the same objects
-        for i, (original, current) in enumerate(zip(original_strips, conversation._strips)):
+        for i, (original, current) in enumerate(
+          zip(original_strips, conversation._strips, strict=True)
+        ):
           assert original is current, f"Strip {i} changed after scroll"
 
         # Verify strip content at various positions

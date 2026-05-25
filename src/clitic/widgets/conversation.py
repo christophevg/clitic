@@ -57,87 +57,87 @@ DEFAULT_ROLE_LABELS: dict[str, RoleLabelConfig] = {
 
 @dataclass(frozen=True)
 class BlockInfo:
-    """Immutable block information for public API access.
+  """Immutable block information for public API access.
 
-    Attributes:
-        block_id: Unique identifier for this block.
-        role: The role of the message (user, assistant, system, tool).
-        content: The text content of the message.
-        metadata: Immutable metadata for custom application data.
-        timestamp: UTC-aware timestamp when the block was created.
-        sequence: 0-indexed position in the conversation.
-    """
+  Attributes:
+      block_id: Unique identifier for this block.
+      role: The role of the message (user, assistant, system, tool).
+      content: The text content of the message.
+      metadata: Immutable metadata for custom application data.
+      timestamp: UTC-aware timestamp when the block was created.
+      sequence: 0-indexed position in the conversation.
+  """
 
-    block_id: str
-    role: str
-    content: str
-    metadata: dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    sequence: int = 0
+  block_id: str
+  role: str
+  content: str
+  metadata: dict[str, Any] = field(default_factory=dict)
+  timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+  sequence: int = 0
 
-    @property
-    def relative_timestamp(self) -> str:
-        """Human-readable relative time (e.g., '2 min ago')."""
-        now = datetime.now(timezone.utc)
-        delta = now - self.timestamp
-        total_seconds = int(delta.total_seconds())
+  @property
+  def relative_timestamp(self) -> str:
+    """Human-readable relative time (e.g., '2 min ago')."""
+    now = datetime.now(timezone.utc)
+    delta = now - self.timestamp
+    total_seconds = int(delta.total_seconds())
 
-        if total_seconds < 60:
-            return "just now"
-        elif total_seconds < 3600:
-            minutes = total_seconds // 60
-            return f"{minutes} min{'s' if minutes != 1 else ''} ago"
-        elif total_seconds < 86400:
-            hours = total_seconds // 3600
-            return f"{hours} hour{'s' if hours != 1 else ''} ago"
-        else:
-            days = total_seconds // 86400
-            return f"{days} day{'s' if days != 1 else ''} ago"
+    if total_seconds < 60:
+      return "just now"
+    elif total_seconds < 3600:
+      minutes = total_seconds // 60
+      return f"{minutes} min{'s' if minutes != 1 else ''} ago"
+    elif total_seconds < 86400:
+      hours = total_seconds // 3600
+      return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    else:
+      days = total_seconds // 86400
+      return f"{days} day{'s' if days != 1 else ''} ago"
 
 
 @dataclass
 class _BlockData:
-    """Internal dataclass for storing content block information.
+  """Internal dataclass for storing content block information.
 
-    Attributes:
-        info: The immutable BlockInfo for this block.
-        line_count: Number of lines this block occupies when rendered.
-    """
+  Attributes:
+      info: The immutable BlockInfo for this block.
+      line_count: Number of lines this block occupies when rendered.
+  """
 
-    info: BlockInfo
-    line_count: int = 0
+  info: BlockInfo
+  line_count: int = 0
 
 
 class Conversation(ScrollView):
-    """Scrollable content container for conversation messages.
+  """Scrollable content container for conversation messages.
 
-    A virtual-scrolling container that efficiently displays conversation
-    messages with different roles (user, assistant, system, tool).
-    Uses Textual's Line API for O(1) visible line rendering, supporting
-    100,000+ lines without performance degradation.
+  A virtual-scrolling container that efficiently displays conversation
+  messages with different roles (user, assistant, system, tool).
+  Uses Textual's Line API for O(1) visible line rendering, supporting
+  100,000+ lines without performance degradation.
 
-    Attributes:
-        block_count: The number of content blocks in the conversation.
-        auto_scroll: Whether to automatically scroll to new content.
-        session_id: The unique session UUID for this conversation.
+  Attributes:
+      block_count: The number of content blocks in the conversation.
+      auto_scroll: Whether to automatically scroll to new content.
+      session_id: The unique session UUID for this conversation.
 
-    Example:
-        ```python
-        from textual.app import App, ComposeResult
-        from clitic import Conversation
+  Example:
+      ```python
+      from textual.app import App, ComposeResult
+      from clitic import Conversation
 
-        class MyApp(App):
-            def compose(self) -> ComposeResult:
-                yield Conversation()
+      class MyApp(App):
+          def compose(self) -> ComposeResult:
+              yield Conversation()
 
-            def on_mount(self) -> None:
-                conversation = self.query_one(Conversation)
-                conversation.append("user", "Hello!")
-                conversation.append("assistant", "Hi there!")
-        ```
-    """
+          def on_mount(self) -> None:
+              conversation = self.query_one(Conversation)
+              conversation.append("user", "Hello!")
+              conversation.append("assistant", "Hi there!")
+      ```
+  """
 
-    DEFAULT_CSS = """
+  DEFAULT_CSS = """
   Conversation {
     height: 1fr;
     padding: 1;
@@ -153,1285 +153,1269 @@ class Conversation(ScrollView):
   }
   """
 
-    BINDINGS = [
-        ("up", "scroll_up", "Scroll up"),
-        ("down", "scroll_down", "Scroll down"),
-        ("pageup", "page_up", "Page up"),
-        ("pagedown", "page_down", "Page down"),
-        ("home", "scroll_home", "To start"),
-        ("end", "scroll_end", "To end"),
-        ("alt+up", "nav_prev_block", "Previous message"),
-        ("alt+down", "nav_next_block", "Next message"),
-        ("escape", "deselect_block", "Clear selection"),
-    ]
-
-    auto_scroll = reactive(True)
-    selected_block: reactive[str | None] = reactive(None)
-    wrap_navigation: reactive[bool] = reactive(True)
-    navigation_bell: reactive[bool] = reactive(True)
-
-    def __init__(
-        self,
-        *,
-        session_uuid: str | None = None,
-        auto_scroll: bool = True,
-        persistence_enabled: bool = False,
-        session_dir: Path | None = None,
-        max_blocks_in_memory: int = 100,
-        wrap_navigation: bool = True,
-        navigation_bell: bool = True,
-        plugins: list[ContentPlugin] | None = None,
-        role_labels: dict[str, RoleLabelConfig] | None = None,
-        name: str | None = None,
-        id: str | None = None,  # noqa: A002
-        classes: str | None = None,
-        disabled: bool = False,
-    ) -> None:
-        """Initialize the Conversation.
-
-        Args:
-            session_uuid: Optional UUID for the session. If not provided,
-                a new UUID will be generated.
-            auto_scroll: Whether to automatically scroll to new content.
-            persistence_enabled: Whether to enable session persistence.
-            session_dir: Optional session directory for persistence.
-            max_blocks_in_memory: Maximum blocks to keep in memory (0 = unlimited).
-                When exceeded, oldest blocks are pruned from memory but remain
-                in the session file. Default: 100.
-            wrap_navigation: Whether navigation wraps at boundaries. Default: True.
-            navigation_bell: Whether to play bell at boundaries. Default: True.
-            plugins: Optional list of content plugins for custom rendering.
-            role_labels: Optional mapping of role names to their display config.
-                Keys are role names (e.g., "user", "bot"), values are dicts with
-                "label" (display text) and "style" (Rich Style). Defaults provided.
-            name: Name of the widget.
-            id: ID of the widget.
-            classes: Space-separated CSS classes.
-            disabled: Whether the widget is disabled.
-        """
-        self._session_uuid: str = session_uuid or str(uuid.uuid4())
-        self._sequence_counter: int = 0
-        self._block_index: dict[str, int] = {}
-        self._blocks: list[_BlockData] = []
-        self._strips: list[Strip] = []
-        self._cumulative_heights: list[int] = []  # Running total of lines per block
-        self._total_lines: int = 0
-        self._last_width: int = 0
-        self._session_manager: SessionManager | None = None
-        # Pruning-related state
-        self._max_blocks_in_memory: int = max_blocks_in_memory
-        self._pruned_blocks: dict[int, tuple[str, int]] = {}  # sequence -> (block_id, line_count)
-        self._is_loading: bool = False
-        # Navigation state
-        self._selected_index: int = -1  # -1 means no selection
-        # Plugin support
-        self._plugins: list[ContentPlugin] = plugins or []
-        # Role labels configuration
-        self._role_labels: dict[str, RoleLabelConfig] = {
-          **DEFAULT_ROLE_LABELS,
-          **(role_labels or {}),
-        }
-        super().__init__(name=name, id=id, classes=classes, disabled=disabled)
-        self.auto_scroll = auto_scroll
-        self.wrap_navigation = wrap_navigation
-        self.navigation_bell = navigation_bell
-
-        # Initialize session manager if persistence is enabled
-        if persistence_enabled:
-            from clitic.session import SessionManager
-
-            self._session_manager = SessionManager(
-                persistence_enabled=True,
-                session_dir=session_dir,
-            )
-            self._session_manager.start_session(self._session_uuid)
-
-    @property
-    def session_id(self) -> str:
-        """Read-only session UUID."""
-        return self._session_uuid
-
-    @property
-    def max_blocks_in_memory(self) -> int:
-        """Maximum blocks to keep in memory (0 = unlimited)."""
-        return self._max_blocks_in_memory
-
-    @max_blocks_in_memory.setter
-    def max_blocks_in_memory(self, value: int) -> None:
-        """Set the maximum blocks to keep in memory.
-
-        Args:
-            value: The maximum number of blocks (0 = unlimited).
-        """
-        if value < 0:
-            raise ValueError("max_blocks_in_memory must be >= 0")
-        self._max_blocks_in_memory = value
-
-    @property
-    def in_memory_block_count(self) -> int:
-        """Number of blocks currently in memory."""
-        return len(self._blocks)
-
-    @property
-    def pruned_block_count(self) -> int:
-        """Number of blocks that have been pruned from memory."""
-        return len(self._pruned_blocks)
-
-    def _get_content_width(self) -> int:
-        """Get the available content width for rendering.
-
-        Returns:
-            The width available for content, accounting for padding.
-        """
-        region = self.scrollable_content_region
-        if region and region.width > 0:
-            # Account for horizontal padding from CSS (padding: 1 = 2 chars total)
-            return max(1, region.width - 2)
-        return _DEFAULT_WIDTH
-
-    def _should_prune(self) -> bool:
-        """Check if pruning should occur.
-
-        Returns:
-            True if pruning is needed, False otherwise.
-        """
-        # Pruning disabled if threshold is 0
-        if self._max_blocks_in_memory == 0:
-            return False
-        # Pruning requires persistence
-        if self._session_manager is None:
-            return False
-        # Check if threshold exceeded
-        return len(self._blocks) > self._max_blocks_in_memory
-
-    def _prune_oldest_blocks(self) -> None:
-        """Prune oldest blocks from memory.
-
-        Evicts blocks from memory while preserving them in the session file.
-        The pruned blocks are tracked in _pruned_blocks for lazy loading.
-        """
-        if not self._should_prune():
-            return
-
-        # Calculate how many blocks to remove
-        blocks_to_prune = len(self._blocks) - self._max_blocks_in_memory
-
-        for _ in range(blocks_to_prune):
-            if not self._blocks:
-                break
-
-            # Get the oldest block (first in list)
-            oldest_block = self._blocks[0]
-            sequence = oldest_block.info.sequence
-            block_id = oldest_block.info.block_id
-            line_count = oldest_block.line_count
-
-            # Record in pruned_blocks before removing
-            self._pruned_blocks[sequence] = (block_id, line_count)
-
-            # Remove from blocks list
-            self._blocks.pop(0)
-
-            # Remove from strips
-            self._strips = self._strips[line_count:]
-
-            # Update cumulative heights
-            lines_removed = line_count
-            self._cumulative_heights = [h - lines_removed for h in self._cumulative_heights]
-            self._cumulative_heights.pop(0)
-
-            # Update total lines
-            self._total_lines -= line_count
-            self.virtual_size = Size(
-                self.virtual_size.width,
-                self._total_lines,
-            )
-
-        # Rebuild block index (indices shifted)
-        self._block_index.clear()
-        for i, block in enumerate(self._blocks):
-            self._block_index[block.info.block_id] = i
-
-        # Refresh display
-        self.refresh()
-
-    def _restore_pruned_blocks(self, start_sequence: int, count: int = 1) -> bool:
-        """Restore pruned blocks from the session file.
-
-        Loads blocks from the file and inserts them back into memory.
-
-        Args:
-            start_sequence: The sequence number to start restoring from.
-            count: Number of blocks to restore (default: 1).
-
-        Returns:
-            True if blocks were restored, False otherwise.
-        """
-        # Prevent concurrent loading
-        if self._is_loading:
-            return False
-
-        if self._session_manager is None:
-            return False
-
-        # Check which sequences are already in memory
-        in_memory_sequences = {block.info.sequence for block in self._blocks}
-
-        # Find sequences to restore (must be pruned AND not already in memory)
-        sequences_to_restore = sorted(
-            [
-                s
-                for s in self._pruned_blocks.keys()
-                if s >= start_sequence and s not in in_memory_sequences
-            ]
-        )[:count]
-
-        if not sequences_to_restore:
-            return False
-
-        self._is_loading = True
-        self.add_class("loading")
-        try:
-            # Load blocks from file
-            end_sequence = max(sequences_to_restore)
-            blocks_to_restore = self._session_manager.load_blocks_by_sequence_range(
-                self._session_uuid, start_sequence, end_sequence
-            )
-
-            if not blocks_to_restore:
-                return False
-
-            # Get current render width
-            width = self._get_content_width()
-
-            # Insert blocks at the beginning
-            inserted_count = 0
-            for block_info in reversed(blocks_to_restore):
-                # Check if this sequence is in pruned_blocks AND not already in memory
-                if block_info.sequence not in self._pruned_blocks:
-                    continue
-                if block_info.sequence in in_memory_sequences:
-                    continue
-
-                # Remove from pruned_blocks
-                del self._pruned_blocks[block_info.sequence]
-
-                # Create block data
-                block = _BlockData(info=block_info)
-
-                # Render the block
-                block_strips = self._render_block_to_strips(block, width)
-                block.line_count = len(block_strips)
-
-                # Insert at beginning
-                self._blocks.insert(0, block)
-
-                # Insert strips at beginning
-                self._strips = block_strips + self._strips
-
-                # Update cumulative heights
-                for i in range(len(self._cumulative_heights)):
-                    self._cumulative_heights[i] += block.line_count
-                self._cumulative_heights.insert(0, block.line_count)
-
-                # Update total lines
-                self._total_lines += block.line_count
-
-                inserted_count += 1
-
-            if inserted_count == 0:
-                return False
-
-            # Rebuild block index
-            self._block_index.clear()
-            for i, block in enumerate(self._blocks):
-                self._block_index[block.info.block_id] = i
-
-            # Update virtual size
-            region = self.scrollable_content_region
-            vwidth = region.width if region and region.width > 0 else width
-            self.virtual_size = Size(vwidth, self._total_lines)
-
-            # Refresh display
-            self.refresh()
-
-            return True
-
-        finally:
-            self._is_loading = False
-            self.remove_class("loading")
-
-    def _render_block_to_strips(
-        self, block: _BlockData, width: int, is_selected: bool = False
-    ) -> list[Strip]:
-        """Render a block's content to a list of Strips.
-
-        Routes to plugin rendering if content_type metadata is present and
-        a matching plugin is available. Falls back to plain text rendering
-        on any failure.
-
-        Args:
-            block: The block data to render.
-            width: The width to render at (for text wrapping).
-            is_selected: Whether this block is currently selected.
-
-        Returns:
-            List of Strip objects, one per line.
-        """
-        # Check for content_type in metadata for plugin rendering
-        content_type = block.info.metadata.get("content_type")
-
-        if content_type and self._plugins:
-            plugin = self._get_matching_plugin(content_type, block.info.content)
-            if plugin:
-                # Render plugin content at full width
-                plugin_strips = self._render_plugin_to_strips(
-                    plugin, block.info.content, width, block.info.role, is_selected
-                )
-                if plugin_strips:
-                    # Create role label on its own line for plugin content
-                    role_label_strip = self._create_role_label_strip(
-                        block.info.role, width, is_selected
-                    )
-                    # Combine: role label + plugin content + blank margin
-                    result_strips = [role_label_strip] + plugin_strips
-                    result_strips.append(Strip.blank(width, getattr(self, "rich_style", None)))
-                    return result_strips
-
-        # Fall back to plain text rendering
-        # Get style from configuration or use default
-        role_config = self._role_labels.get(block.info.role)
-        if role_config:
-            base_style = role_config["style"]
-            role_label = role_config["label"]
-        else:
-            # Default for unknown roles
-            base_style = Style(bold=True, color="grey62")
-            role_label = block.info.role
-
-        # Selection uses cyan color to highlight the block
-        if is_selected:
-            style = Style(bold=True, color="cyan")
-        else:
-            style = base_style
-
-        text = Text(f"[{role_label}] {block.info.content}", style=style)
-
-        # Wrap the text to the available width
-        # Using renderables requires converting to lines
-        console = Console(width=width)
-        lines = list(console.render_lines(text))
-
-        # Convert each line to a Strip
-        strips: list[Strip] = []
-        for line in lines:
-            # Ensure segments have 3-tuple format (text, style, control)
-            segments = []
-            for segment in line:
-                if len(segment) == 2:
-                    # Add None for control if missing
-                    segments.append(RichSegment(segment[0], segment[1], None))
-                else:
-                    segments.append(segment)
-            strip = Strip(segments, width)
-            strips.append(strip)
-
-        # Add a blank line as margin between blocks
-        blank_strip = Strip.blank(width, getattr(self, "rich_style", None))
-        strips.append(blank_strip)
-
-        return strips
-
-    def _get_matching_plugin(
-        self, content_type: str, content: str
-    ) -> ContentPlugin | None:
-        """Find best plugin for content type, sorted by priority.
-
-        Args:
-            content_type: MIME type or identifier for the content.
-            content: The content to potentially render.
-
-        Returns:
-            The matching ContentPlugin with highest priority, or None.
-        """
-        matching_plugins = [
-            p for p in self._plugins if p.can_render(content_type, content)
-        ]
-        matching_plugins.sort(key=lambda p: p.priority, reverse=True)
-        return matching_plugins[0] if matching_plugins else None
-
-    def _render_plugin_to_strips(
-        self,
-        plugin: ContentPlugin,
-        content: str,
-        width: int,
-        role: str,
-        is_selected: bool,
-    ) -> list[Strip] | None:
-        """Render content using plugin to strips. Returns None on failure.
-
-        If the plugin has a ``render_to_strips`` method, it is called directly
-        with the content and width, bypassing the generic renderable conversion.
-        This allows plugins to control width-aware rendering (e.g. full-width
-        background colors).
-
-        Args:
-            plugin: The plugin to use for rendering.
-            content: The content to render.
-            width: The width to render at.
-            role: The role of the message.
-            is_selected: Whether this block is selected.
-
-        Returns:
-            List of Strip objects, or None on failure.
-        """
-        try:
-            if hasattr(plugin, "render_to_strips"):
-                return cast(list[Strip], plugin.render_to_strips(content, width))
-            renderable = plugin.render(content)
-            return self._renderable_to_strips(renderable, width)
-        except Exception:
-            import logging
-
-            logging.getLogger(__name__).exception(
-                f"Plugin {plugin.name} failed to render content"
-            )
-            return None
-
-    def _renderable_to_strips(
-        self,
-        renderable: object,
-        width: int,
-    ) -> list[Strip] | None:
-        """Convert a Rich renderable to list of Strips.
-
-        Args:
-            renderable: The Rich renderable (or object with render() method).
-            width: The width to render at.
-
-        Returns:
-            List of Strip objects, or None on failure.
-        """
-        try:
-            # Use Rich Console to render lines
-            console = Console(width=width)
-            lines = list(console.render_lines(cast(ConsoleRenderable, renderable)))
-
-            # Convert lines to strips
-            strips: list[Strip] = []
-            for line in lines:
-                segments = []
-                for segment in line:
-                    if len(segment) == 2:
-                        segments.append(RichSegment(segment[0], segment[1], None))
-                    else:
-                        segments.append(segment)
-                strips.append(Strip(segments, width))
-
-            return strips if strips else None
-        except Exception:
-            import logging
-
-            logging.getLogger(__name__).exception(
-                "Failed to convert renderable to strips"
-            )
-            return None
-
-    def _widget_to_strips(
-        self,
-        widget: Widget,
-        width: int,
-        role: str,
-        is_selected: bool,
-    ) -> list[Strip] | None:
-        """Convert Textual Widget to list of Strips using Rich Console.
-
-        Args:
-            widget: The Textual Widget to convert.
-            width: The width to render at.
-            role: The role of the message.
-            is_selected: Whether this block is selected.
-
-        Returns:
-            List of Strip objects, or None on failure.
-        """
-        try:
-            # Get widget's renderable content
-            renderable = widget.render()
-
-            # Delegate to renderable_to_strips
-            return self._renderable_to_strips(renderable, width)
-        except Exception:
-            import logging
-
-            logging.getLogger(__name__).exception(
-                "Failed to convert widget to strips"
-            )
-            return None
-
-    def _add_role_label_to_strips(
-        self,
-        strips: list[Strip],
-        role: str,
-        width: int,
-        is_selected: bool,
-    ) -> list[Strip]:
-        """Add role label prefix to first strip line.
-
-        Args:
-            strips: The strips to modify.
-            role: The role of the message.
-            width: The width to render at.
-            is_selected: Whether this block is selected.
-
-        Returns:
-            List of Strip objects with role label prepended to first line.
-        """
-        if not strips:
-            return strips
-
-        # Get role label from configuration
-        role_config = self._role_labels.get(role)
-        role_label = role_config["label"] if role_config else role
-        base_style = role_config["style"] if role_config else Style(bold=True, color="grey62")
-
-        # Selection overrides style
-        if is_selected:
-            style = Style(bold=True, color="cyan")
-        else:
-            style = base_style
-
-        # Create label text and render WITHOUT padding to full width
-        label_text = Text(f"[{role_label}] ", style=style)
-        # Create a console just for rendering options (not for width-based padding)
-        console = Console()
-        # Use __rich_console__ to get segments without width padding
-        render_iter = label_text.__rich_console__(console, console.options)
-        label_segments: list[RichSegment] = []
-        for segment in render_iter:
-            # Segments are 3-tuples: (text, style, control)
-            # Or 2-tuples: (text, style)
-            if len(segment) >= 2:
-                text = segment[0]
-                seg_style = segment[1]
-                # Skip newline-only segments
-                if text == "\n":
-                    continue
-                control = segment[2] if len(segment) >= 3 else None
-                label_segments.append(RichSegment(text, seg_style, control))
-            # Skip 1-tuple newlines (control-only segments)
-
-        if not label_segments:
-            return strips
-
-        first_strip = strips[0]
-        new_segments = label_segments + list(first_strip)
-        new_first = Strip(new_segments, width)
-
-        return [new_first] + strips[1:]
-
-    def _create_role_label_strip(
-        self,
-        role: str,
-        width: int,
-        is_selected: bool,
-    ) -> Strip:
-        """Create a strip containing just the role label.
-
-        Args:
-            role: The role of the message.
-            width: The width to render at.
-            is_selected: Whether this block is selected.
-
-        Returns:
-            A Strip containing the role label on its own line.
-        """
-        # Get role label from configuration
-        role_config = self._role_labels.get(role)
-        role_label = role_config["label"] if role_config else role
-        base_style = role_config["style"] if role_config else Style(bold=True, color="grey62")
-
-        # Selection overrides style
-        if is_selected:
-            style = Style(bold=True, color="cyan")
-        else:
-            style = base_style
-
-        # Create label text and render with proper width padding
-        label_text = Text(f"[{role_label}]", style=style)
-        # Use Console with width to get properly padded lines
-        console = Console(width=width)
-        lines = list(console.render_lines(label_text))
-
-        if not lines:
-            # Fallback: create a blank strip if rendering fails
-            return Strip.blank(width, getattr(self, "rich_style", None))
-
-        # Convert the first (and only) line to a Strip
-        # Use only the first line since the label is a single line
-        line = lines[0]
-        segments = []
-        for segment in line:
-            if len(segment) == 2:
-                segments.append(RichSegment(segment[0], segment[1], None))
-            else:
-                segments.append(segment)
-
-        return Strip(segments, width)
-
-    def _rerender_all_blocks(self) -> None:
-        """Re-render all blocks with current width."""
-        width = self._get_content_width()
-
-        # Build new strips in temporary lists to avoid race conditions with render_line.
-        # During resize, Textual may call render_line while we're rebuilding, so we
-        # must ensure _strips is always in a consistent state.
-        new_strips: list[Strip] = []
-        new_cumulative_heights: list[int] = []
-        new_total_lines = 0
-
-        for i, block in enumerate(self._blocks):
-            is_selected = i == self._selected_index
-            block_strips = self._render_block_to_strips(block, width, is_selected=is_selected)
-            block.line_count = len(block_strips)
-            new_strips.extend(block_strips)
-            new_total_lines += block.line_count
-            new_cumulative_heights.append(new_total_lines)
-
-        # Atomic swap of all data at once
-        self._strips = new_strips
-        self._cumulative_heights = new_cumulative_heights
-        self._total_lines = new_total_lines
-        self._last_width = width
-        # Use actual content region width for virtual size
-        region = self.scrollable_content_region
-        vwidth = region.width if region and region.width > 0 else width
-        self.virtual_size = Size(vwidth, self._total_lines)
-
-    def watch_scroll_y(self, old: float, new: float) -> None:
-        """Watch for scroll position changes to manage auto_scroll state.
-
-        Args:
-            old: Previous scroll position.
-            new: Current scroll position.
-        """
-        # Call parent's watch_scroll_y to ensure ScrollView updates properly
-        super().watch_scroll_y(old, new)
-        self._update_auto_scroll_from_scroll_position()
-        # Check if we need to restore pruned blocks when scrolling up
-        # Pass the new scroll position for testing purposes
-        self._check_and_restore_pruned_blocks(_scroll_y=new)
-
-    def on_resize(self, event: Resize) -> None:
-        """Handle resize events to re-render content with new width."""
-        new_width = self._get_content_width()
-        if new_width != self._last_width and self._blocks:
-            self._rerender_all_blocks()
-            # Force clear Textual's caches to prevent stale content
-            self.clear_cached_dimensions()
-            self._clear_arrangement_cache()
-            # Force full redraw by invalidating the entire widget region
-            self.refresh(layout=True)
-
-        self._update_auto_scroll_from_scroll_position()
-
-    def _update_auto_scroll_from_scroll_position(self) -> None:
-        """Update auto_scroll based on current scroll position."""
-        max_y = self.max_scroll_y
-        # If all content fits, auto-scroll should be enabled
-        if max_y == 0:
-            self.auto_scroll = True
-        # At or near bottom - resume auto-scroll
-        elif self.scroll_y >= max_y - 1:
-            self.auto_scroll = True
-        # Scrolled up - pause auto-scroll
-        else:
-            self.auto_scroll = False
-
-    def _check_and_restore_pruned_blocks(self, _scroll_y: float | None = None) -> None:
-        """Check if pruned blocks should be restored based on scroll position.
-
-        When the user scrolls near the top (within RESTORE_THRESHOLD lines),
-        restore pruned blocks from the session file to provide seamless UX.
-
-        The restored blocks are inserted at the top, and scroll position is
-        adjusted to maintain the user's view.
-
-        Args:
-            _scroll_y: Optional scroll position for testing. If None, uses self.scroll_y.
-        """
-        RESTORE_THRESHOLD = 10  # Lines from top to trigger restoration
-        current_scroll_y = _scroll_y if _scroll_y is not None else self.scroll_y
-
-        # Don't restore if no pruned blocks
-        if not self._pruned_blocks:
-            return
-
-        # Don't restore if already loading
-        if self._is_loading:
-            return
-
-        # Don't restore if persistence is disabled
-        if self._session_manager is None:
-            return
-
-        # Check if user is scrolling near the top
-        if current_scroll_y > RESTORE_THRESHOLD:
-            return
-
-        # Find the minimum sequence in pruned blocks (oldest pruned block)
-        min_sequence = min(self._pruned_blocks.keys())
-
-        # Get the line count of the block we're about to restore
-        # to adjust scroll position
-        block_info = self._pruned_blocks[min_sequence]
-        if isinstance(block_info, tuple):
-            _, line_count = block_info
-        else:
-            line_count = 0
-
-        # Restore the block
-        restored = self._restore_pruned_blocks(min_sequence, count=1)
-
-        # Adjust scroll position to maintain user's view
-        # After restoration, the new block is at the top, shifting everything down
-        if restored and line_count > 0:
-            try:
-                self.scroll_to(y=self.scroll_y + line_count, animate=False)
-            except NoActiveAppError:
-                # Widget not mounted - scroll adjustment will happen naturally
-                # when the widget is mounted and renders
-                pass
-
-    def watch_auto_scroll(self, old: bool, new: bool) -> None:
-        """Watch for auto_scroll changes to update visual state.
-
-        Args:
-            old: Previous auto_scroll state.
-            new: Current auto_scroll state.
-        """
-        if new:
-            self.remove_class("paused")
-        else:
-            self.add_class("paused")
-
-    def render_line(self, y: int) -> Strip:
-        """Render a single line of content using the Line API.
-
-        This method is called by Textual for each visible line on screen,
-        enabling O(1) per-line rendering regardless of total content size.
-
-        Args:
-            y: The screen y-coordinate (0 is top of visible region).
-
-        Returns:
-            A Strip containing the rendered content for this line.
-        """
-        # Get scroll offset to map screen y to data y
-        scroll_x, scroll_y = self.scroll_offset
-        # Convert to int for array indexing - scroll values can be floats
-        data_y = int(scroll_y) + y
-
-        # Get the current content width for this render pass.
-        width = self._get_content_width()
-
-        # Check bounds before accessing strips
-        if data_y < 0:
-            return Strip.blank(width, getattr(self, "rich_style", None))
-
-        # Bounds check - use len(_strips) not _total_lines for array access
-        if not self._strips or data_y >= len(self._strips):
-            return Strip.blank(width, getattr(self, "rich_style", None))
-
-        # Get the strip for this line
-        strip = self._strips[data_y]
-
-        # Handle corrupted strip (None value)
-        if strip is None:
-            return Strip.blank(width, getattr(self, "rich_style", None))
-
-        # Get the background style from the last segment for extension
-        # This ensures that when cropping/extending, the padding uses the
-        # same background color as the content, preventing visual artifacts
-        extend_style = None
-        strip_segments = list(strip)
-        if strip_segments:
-            last_seg = strip_segments[-1]
-            if last_seg.style:
-                extend_style = last_seg.style
-        if extend_style is None:
-            extend_style = getattr(self, "rich_style", None)
-
-        # Handle horizontal scrolling by cropping the strip
-        return strip.crop_extend(
-            int(scroll_x), int(scroll_x) + width, extend_style
-        )
-
-    def append(
-        self,
-        role: str,
-        content: str,
-        metadata: dict[str, Any] | None = None,
-    ) -> str:
-        """Add a new content block to the conversation.
-
-        Args:
-            role: The role of the message (user, assistant, system, tool).
-            content: The text content of the message.
-            metadata: Optional metadata dictionary for custom application data.
-
-        Returns:
-            The unique ID of the created block.
-        """
-        block_id = f"{self._session_uuid}-{self._sequence_counter}"
-        sequence = self._sequence_counter
-        self._sequence_counter += 1
-
-        # Get current width for rendering
-        width = self._get_content_width()
-
-        # Check if width has changed since last render - re-render all if so
-        if self._last_width != 0 and width != self._last_width:
-            # Width changed, need to re-render everything at new width
-            self._rerender_all_blocks()
-            # Now append the new block at the new width
-            width = self._get_content_width()
-
-        # Create the BlockInfo and BlockData
-        info = BlockInfo(
-            block_id=block_id,
-            role=role,
-            content=content,
-            metadata=metadata if metadata is not None else {},
-            timestamp=datetime.now(timezone.utc),
-            sequence=sequence,
-        )
-        block = _BlockData(info=info)
-        self._blocks.append(block)
-
-        # Save block to session file if persistence is enabled
-        if self._session_manager is not None:
-            self._session_manager.save_block(info)
-
-        # Prune oldest blocks if threshold exceeded
-        if self._should_prune():
-            self._prune_oldest_blocks()
-
-        # Update the block index for O(1) lookup
-        self._block_index[block_id] = len(self._blocks) - 1
-
-        # Render the block to strips
+  BINDINGS = [
+    ("up", "scroll_up", "Scroll up"),
+    ("down", "scroll_down", "Scroll down"),
+    ("pageup", "page_up", "Page up"),
+    ("pagedown", "page_down", "Page down"),
+    ("home", "scroll_home", "To start"),
+    ("end", "scroll_end", "To end"),
+    ("alt+up", "nav_prev_block", "Previous message"),
+    ("alt+down", "nav_next_block", "Next message"),
+    ("escape", "deselect_block", "Clear selection"),
+  ]
+
+  auto_scroll = reactive(True)
+  selected_block: reactive[str | None] = reactive(None)
+  wrap_navigation: reactive[bool] = reactive(True)
+  navigation_bell: reactive[bool] = reactive(True)
+
+  def __init__(
+    self,
+    *,
+    session_uuid: str | None = None,
+    auto_scroll: bool = True,
+    persistence_enabled: bool = False,
+    session_dir: Path | None = None,
+    max_blocks_in_memory: int = 100,
+    wrap_navigation: bool = True,
+    navigation_bell: bool = True,
+    plugins: list[ContentPlugin] | None = None,
+    role_labels: dict[str, RoleLabelConfig] | None = None,
+    name: str | None = None,
+    id: str | None = None,  # noqa: A002
+    classes: str | None = None,
+    disabled: bool = False,
+  ) -> None:
+    """Initialize the Conversation.
+
+    Args:
+        session_uuid: Optional UUID for the session. If not provided,
+            a new UUID will be generated.
+        auto_scroll: Whether to automatically scroll to new content.
+        persistence_enabled: Whether to enable session persistence.
+        session_dir: Optional session directory for persistence.
+        max_blocks_in_memory: Maximum blocks to keep in memory (0 = unlimited).
+            When exceeded, oldest blocks are pruned from memory but remain
+            in the session file. Default: 100.
+        wrap_navigation: Whether navigation wraps at boundaries. Default: True.
+        navigation_bell: Whether to play bell at boundaries. Default: True.
+        plugins: Optional list of content plugins for custom rendering.
+        role_labels: Optional mapping of role names to their display config.
+            Keys are role names (e.g., "user", "bot"), values are dicts with
+            "label" (display text) and "style" (Rich Style). Defaults provided.
+        name: Name of the widget.
+        id: ID of the widget.
+        classes: Space-separated CSS classes.
+        disabled: Whether the widget is disabled.
+    """
+    self._session_uuid: str = session_uuid or str(uuid.uuid4())
+    self._sequence_counter: int = 0
+    self._block_index: dict[str, int] = {}
+    self._blocks: list[_BlockData] = []
+    self._strips: list[Strip] = []
+    self._cumulative_heights: list[int] = []  # Running total of lines per block
+    self._total_lines: int = 0
+    self._last_width: int = 0
+    self._session_manager: SessionManager | None = None
+    # Pruning-related state
+    self._max_blocks_in_memory: int = max_blocks_in_memory
+    self._pruned_blocks: dict[int, tuple[str, int]] = {}  # sequence -> (block_id, line_count)
+    self._is_loading: bool = False
+    # Navigation state
+    self._selected_index: int = -1  # -1 means no selection
+    # Plugin support
+    self._plugins: list[ContentPlugin] = plugins or []
+    # Role labels configuration
+    self._role_labels: dict[str, RoleLabelConfig] = {
+      **DEFAULT_ROLE_LABELS,
+      **(role_labels or {}),
+    }
+    super().__init__(name=name, id=id, classes=classes, disabled=disabled)
+    self.auto_scroll = auto_scroll
+    self.wrap_navigation = wrap_navigation
+    self.navigation_bell = navigation_bell
+
+    # Initialize session manager if persistence is enabled
+    if persistence_enabled:
+      from clitic.session import SessionManager
+
+      self._session_manager = SessionManager(
+        persistence_enabled=True,
+        session_dir=session_dir,
+      )
+      self._session_manager.start_session(self._session_uuid)
+
+  @property
+  def session_id(self) -> str:
+    """Read-only session UUID."""
+    return self._session_uuid
+
+  @property
+  def max_blocks_in_memory(self) -> int:
+    """Maximum blocks to keep in memory (0 = unlimited)."""
+    return self._max_blocks_in_memory
+
+  @max_blocks_in_memory.setter
+  def max_blocks_in_memory(self, value: int) -> None:
+    """Set the maximum blocks to keep in memory.
+
+    Args:
+        value: The maximum number of blocks (0 = unlimited).
+    """
+    if value < 0:
+      raise ValueError("max_blocks_in_memory must be >= 0")
+    self._max_blocks_in_memory = value
+
+  @property
+  def in_memory_block_count(self) -> int:
+    """Number of blocks currently in memory."""
+    return len(self._blocks)
+
+  @property
+  def pruned_block_count(self) -> int:
+    """Number of blocks that have been pruned from memory."""
+    return len(self._pruned_blocks)
+
+  def _get_content_width(self) -> int:
+    """Get the available content width for rendering.
+
+    Returns:
+        The width available for content, accounting for padding.
+    """
+    region = self.scrollable_content_region
+    if region and region.width > 0:
+      # Account for horizontal padding from CSS (padding: 1 = 2 chars total)
+      return max(1, region.width - 2)
+    return _DEFAULT_WIDTH
+
+  def _should_prune(self) -> bool:
+    """Check if pruning should occur.
+
+    Returns:
+        True if pruning is needed, False otherwise.
+    """
+    # Pruning disabled if threshold is 0
+    if self._max_blocks_in_memory == 0:
+      return False
+    # Pruning requires persistence
+    if self._session_manager is None:
+      return False
+    # Check if threshold exceeded
+    return len(self._blocks) > self._max_blocks_in_memory
+
+  def _prune_oldest_blocks(self) -> None:
+    """Prune oldest blocks from memory.
+
+    Evicts blocks from memory while preserving them in the session file.
+    The pruned blocks are tracked in _pruned_blocks for lazy loading.
+    """
+    if not self._should_prune():
+      return
+
+    # Calculate how many blocks to remove
+    blocks_to_prune = len(self._blocks) - self._max_blocks_in_memory
+
+    for _ in range(blocks_to_prune):
+      if not self._blocks:
+        break
+
+      # Get the oldest block (first in list)
+      oldest_block = self._blocks[0]
+      sequence = oldest_block.info.sequence
+      block_id = oldest_block.info.block_id
+      line_count = oldest_block.line_count
+
+      # Record in pruned_blocks before removing
+      self._pruned_blocks[sequence] = (block_id, line_count)
+
+      # Remove from blocks list
+      self._blocks.pop(0)
+
+      # Remove from strips
+      self._strips = self._strips[line_count:]
+
+      # Update cumulative heights
+      lines_removed = line_count
+      self._cumulative_heights = [h - lines_removed for h in self._cumulative_heights]
+      self._cumulative_heights.pop(0)
+
+      # Update total lines
+      self._total_lines -= line_count
+      self.virtual_size = Size(
+        self.virtual_size.width,
+        self._total_lines,
+      )
+
+    # Rebuild block index (indices shifted)
+    self._block_index.clear()
+    for i, block in enumerate(self._blocks):
+      self._block_index[block.info.block_id] = i
+
+    # Refresh display
+    self.refresh()
+
+  def _restore_pruned_blocks(self, start_sequence: int, count: int = 1) -> bool:
+    """Restore pruned blocks from the session file.
+
+    Loads blocks from the file and inserts them back into memory.
+
+    Args:
+        start_sequence: The sequence number to start restoring from.
+        count: Number of blocks to restore (default: 1).
+
+    Returns:
+        True if blocks were restored, False otherwise.
+    """
+    # Prevent concurrent loading
+    if self._is_loading:
+      return False
+
+    if self._session_manager is None:
+      return False
+
+    # Check which sequences are already in memory
+    in_memory_sequences = {block.info.sequence for block in self._blocks}
+
+    # Find sequences to restore (must be pruned AND not already in memory)
+    sequences_to_restore = sorted(
+      [
+        s
+        for s in self._pruned_blocks.keys()
+        if s >= start_sequence and s not in in_memory_sequences
+      ]
+    )[:count]
+
+    if not sequences_to_restore:
+      return False
+
+    self._is_loading = True
+    self.add_class("loading")
+    try:
+      # Load blocks from file
+      end_sequence = max(sequences_to_restore)
+      blocks_to_restore = self._session_manager.load_blocks_by_sequence_range(
+        self._session_uuid, start_sequence, end_sequence
+      )
+
+      if not blocks_to_restore:
+        return False
+
+      # Get current render width
+      width = self._get_content_width()
+
+      # Insert blocks at the beginning
+      inserted_count = 0
+      for block_info in reversed(blocks_to_restore):
+        # Check if this sequence is in pruned_blocks AND not already in memory
+        if block_info.sequence not in self._pruned_blocks:
+          continue
+        if block_info.sequence in in_memory_sequences:
+          continue
+
+        # Remove from pruned_blocks
+        del self._pruned_blocks[block_info.sequence]
+
+        # Create block data
+        block = _BlockData(info=block_info)
+
+        # Render the block
         block_strips = self._render_block_to_strips(block, width)
         block.line_count = len(block_strips)
 
-        # Append to strips list
-        self._strips.extend(block_strips)
+        # Insert at beginning
+        self._blocks.insert(0, block)
 
-        # Update cumulative heights and total lines
+        # Insert strips at beginning
+        self._strips = block_strips + self._strips
+
+        # Update cumulative heights
+        for i in range(len(self._cumulative_heights)):
+          self._cumulative_heights[i] += block.line_count
+        self._cumulative_heights.insert(0, block.line_count)
+
+        # Update total lines
         self._total_lines += block.line_count
-        self._cumulative_heights.append(self._total_lines)
 
-        # Update virtual size for scrolling
-        # Use the actual content region width if available, otherwise use the render width
-        region = self.scrollable_content_region
-        vwidth = region.width if region and region.width > 0 else width
-        self.virtual_size = Size(vwidth, self._total_lines)
+        inserted_count += 1
 
-        # Update last width
-        self._last_width = width
+      if inserted_count == 0:
+        return False
 
-        # Auto-scroll to end if enabled
-        if self.auto_scroll:
-            self.call_after_refresh(self.scroll_end, animate=False)
+      # Rebuild block index
+      self._block_index.clear()
+      for i, block in enumerate(self._blocks):
+        self._block_index[block.info.block_id] = i
 
-        # Refresh to trigger redraw
-        self.refresh()
+      # Update virtual size
+      region = self.scrollable_content_region
+      vwidth = region.width if region and region.width > 0 else width
+      self.virtual_size = Size(vwidth, self._total_lines)
 
-        return block_id
+      # Refresh display
+      self.refresh()
 
-    def clear(self) -> None:
-        """Clear all content blocks from the conversation.
+      return True
 
-        Note: This does NOT reset the sequence counter or session UUID.
-        Block IDs will continue from the current sequence number.
-        """
-        self._blocks.clear()
-        self._strips.clear()
-        self._cumulative_heights.clear()
-        self._block_index.clear()
-        self._pruned_blocks.clear()
-        self._total_lines = 0
-        self._last_width = 0
-        self.virtual_size = Size(0, 0)
-        # Reset selection state
-        self._selected_index = -1
-        self.selected_block = None
-        self.refresh()
+    finally:
+      self._is_loading = False
+      self.remove_class("loading")
 
-    @property
-    def block_count(self) -> int:
-        """Return the number of content blocks in the conversation.
+  def _render_block_to_strips(
+    self, block: _BlockData, width: int, is_selected: bool = False
+  ) -> list[Strip]:
+    """Render a block's content to a list of Strips.
 
-        Returns:
-            The number of content blocks.
-        """
-        return len(self._blocks)
+    Routes to plugin rendering if content_type metadata is present and
+    a matching plugin is available. Falls back to plain text rendering
+    on any failure.
 
-    @property
-    def selected_block_index(self) -> int | None:
-        """Return the 0-indexed position of the selected block.
+    Args:
+        block: The block data to render.
+        width: The width to render at (for text wrapping).
+        is_selected: Whether this block is currently selected.
 
-        Returns:
-            The index of the selected block, or None if no selection.
-        """
-        if self._selected_index < 0:
-            return None
-        return self._selected_index
+    Returns:
+        List of Strip objects, one per line.
+    """
+    # Check for content_type in metadata for plugin rendering
+    content_type = block.info.metadata.get("content_type")
 
-    @property
-    def selected_block_info(self) -> BlockInfo | None:
-        """Return the BlockInfo for the selected block.
+    if content_type and self._plugins:
+      plugin = self._get_matching_plugin(content_type, block.info.content)
+      if plugin:
+        # Render plugin content at full width
+        plugin_strips = self._render_plugin_to_strips(
+          plugin, block.info.content, width, block.info.role, is_selected
+        )
+        if plugin_strips:
+          # Create role label on its own line for plugin content
+          role_label_strip = self._create_role_label_strip(block.info.role, width, is_selected)
+          # Combine: role label + plugin content + blank margin
+          result_strips = [role_label_strip] + plugin_strips
+          result_strips.append(Strip.blank(width, getattr(self, "rich_style", None)))
+          return result_strips
 
-        Returns:
-            The BlockInfo if a block is selected, None otherwise.
-        """
-        if self._selected_index < 0 or self._selected_index >= len(self._blocks):
-            return None
-        return self._blocks[self._selected_index].info
+    # Fall back to plain text rendering
+    # Get style from configuration or use default
+    role_config = self._role_labels.get(block.info.role)
+    if role_config:
+      base_style = role_config["style"]
+      role_label = role_config["label"]
+    else:
+      # Default for unknown roles
+      base_style = Style(bold=True, color="grey62")
+      role_label = block.info.role
 
-    def get_block(self, block_id: str) -> BlockInfo | None:
-        """Get block by ID. O(1) performance for in-memory blocks.
+    # Selection uses cyan color to highlight the block
+    if is_selected:
+      style = Style(bold=True, color="cyan")
+    else:
+      style = base_style
 
-        Falls back to file lookup for pruned blocks.
+    text = Text(f"[{role_label}] {block.info.content}", style=style)
 
-        Args:
-            block_id: The unique identifier of the block.
+    # Wrap the text to the available width
+    # Using renderables requires converting to lines
+    console = Console(width=width)
+    lines = list(console.render_lines(text))
 
-        Returns:
-            The BlockInfo if found, None otherwise.
-        """
-        # Try in-memory first
-        if block_id in self._block_index:
-            index = self._block_index[block_id]
-            return self._blocks[index].info
+    # Convert each line to a Strip
+    strips: list[Strip] = []
+    for line in lines:
+      # Ensure segments have 3-tuple format (text, style, control)
+      segments = []
+      for segment in line:
+        if len(segment) == 2:
+          # Add None for control if missing
+          segments.append(RichSegment(segment[0], segment[1], None))
+        else:
+          segments.append(segment)
+      strip = Strip(segments, width)
+      strips.append(strip)
 
-        # Fall back to file lookup for pruned blocks
-        if self._session_manager is not None:
-            # Extract sequence number from block_id (format: {session_uuid}-{sequence})
-            try:
-                sequence = int(block_id.split("-")[-1])
-                # Check if this block is pruned
-                if sequence in self._pruned_blocks:
-                    return self._session_manager.load_block_by_sequence(
-                        self._session_uuid, sequence
-                    )
-            except (ValueError, IndexError):
-                pass
+    # Add a blank line as margin between blocks
+    blank_strip = Strip.blank(width, getattr(self, "rich_style", None))
+    strips.append(blank_strip)
 
-        return None
+    return strips
 
-    def get_block_at_index(self, index: int) -> BlockInfo | None:
-        """Get block by sequence position. O(1) performance.
+  def _get_matching_plugin(self, content_type: str, content: str) -> ContentPlugin | None:
+    """Find best plugin for content type, sorted by priority.
 
-        Args:
-            index: The 0-indexed position in the conversation.
+    Args:
+        content_type: MIME type or identifier for the content.
+        content: The content to potentially render.
 
-        Returns:
-            The BlockInfo if found, None otherwise.
-        """
-        if 0 <= index < len(self._blocks):
-            return self._blocks[index].info
-        return None
+    Returns:
+        The matching ContentPlugin with highest priority, or None.
+    """
+    matching_plugins = [p for p in self._plugins if p.can_render(content_type, content)]
+    matching_plugins.sort(key=lambda p: p.priority, reverse=True)
+    return matching_plugins[0] if matching_plugins else None
 
-    def get_block_id_at_line(self, line: int) -> str | None:
-        """Get the block ID at a specific line index.
+  def _render_plugin_to_strips(
+    self,
+    plugin: ContentPlugin,
+    content: str,
+    width: int,
+    role: str,
+    is_selected: bool,
+  ) -> list[Strip] | None:
+    """Render content using plugin to strips. Returns None on failure.
 
-        Uses binary search on cumulative heights for O(log n) lookup.
+    If the plugin has a ``render_to_strips`` method, it is called directly
+    with the content and width, bypassing the generic renderable conversion.
+    This allows plugins to control width-aware rendering (e.g. full-width
+    background colors).
 
-        Args:
-            line: The line index (0-based).
+    Args:
+        plugin: The plugin to use for rendering.
+        content: The content to render.
+        width: The width to render at.
+        role: The role of the message.
+        is_selected: Whether this block is selected.
 
-        Returns:
-            The block ID if found, None otherwise.
-        """
-        if line < 0 or line >= self._total_lines or not self._cumulative_heights:
-            return None
+    Returns:
+        List of Strip objects, or None on failure.
+    """
+    try:
+      if hasattr(plugin, "render_to_strips"):
+        return cast(list[Strip], plugin.render_to_strips(content, width))
+      renderable = plugin.render(content)
+      return self._renderable_to_strips(renderable, width)
+    except Exception:
+      import logging
 
-        # Binary search to find which block this line belongs to
-        block_index = bisect_right(self._cumulative_heights, line)
-        if 0 <= block_index < len(self._blocks):
-            return self._blocks[block_index].info.block_id
-        return None
+      logging.getLogger(__name__).exception(f"Plugin {plugin.name} failed to render content")
+      return None
 
-    def action_scroll_up(self) -> None:
-        """Scroll up by one line."""
-        self.scroll_to(y=self.scroll_y - 1, animate=False)
+  def _renderable_to_strips(
+    self,
+    renderable: object,
+    width: int,
+  ) -> list[Strip] | None:
+    """Convert a Rich renderable to list of Strips.
 
-    def action_scroll_down(self) -> None:
-        """Scroll down by one line."""
-        self.scroll_to(y=self.scroll_y + 1, animate=False)
+    Args:
+        renderable: The Rich renderable (or object with render() method).
+        width: The width to render at.
 
-    def action_page_up(self) -> None:
-        """Scroll up by one page."""
-        self.scroll_page_up()
+    Returns:
+        List of Strip objects, or None on failure.
+    """
+    try:
+      # Use Rich Console to render lines
+      console = Console(width=width)
+      lines = list(console.render_lines(cast(ConsoleRenderable, renderable)))
 
-    def action_page_down(self) -> None:
-        """Scroll down by one page."""
-        self.scroll_page_down()
+      # Convert lines to strips
+      strips: list[Strip] = []
+      for line in lines:
+        segments = []
+        for segment in line:
+          if len(segment) == 2:
+            segments.append(RichSegment(segment[0], segment[1], None))
+          else:
+            segments.append(segment)
+        strips.append(Strip(segments, width))
 
-    def action_scroll_home(self) -> None:
-        """Scroll to the start of the conversation."""
-        self.scroll_home()
+      return strips if strips else None
+    except Exception:
+      import logging
 
-    def action_scroll_end(self) -> None:
-        """Scroll to the end of the conversation."""
-        self.scroll_end()
+      logging.getLogger(__name__).exception("Failed to convert renderable to strips")
+      return None
 
-    def action_nav_prev_block(self) -> None:
-        """Navigate to the previous block (Alt+Up).
+  def _widget_to_strips(
+    self,
+    widget: Widget,
+    width: int,
+    role: str,
+    is_selected: bool,
+  ) -> list[Strip] | None:
+    """Convert Textual Widget to list of Strips using Rich Console.
 
-        Selects the previous message block. If no block is selected,
-        selects the last block. At the first block, wraps to the last
-        block if wrap_navigation is True, otherwise plays a bell.
-        """
-        if not self._blocks:
-            return
+    Args:
+        widget: The Textual Widget to convert.
+        width: The width to render at.
+        role: The role of the message.
+        is_selected: Whether this block is selected.
 
-        # If no selection, select the last block
-        if self._selected_index < 0:
-            self._selected_index = len(self._blocks) - 1
-            self.selected_block = self._blocks[self._selected_index].info.block_id
-            self._update_selected_visual()
-            self.call_after_refresh(self._scroll_to_selected)
-            return
+    Returns:
+        List of Strip objects, or None on failure.
+    """
+    try:
+      # Get widget's renderable content
+      renderable = widget.render()
 
-        # If at first block
-        if self._selected_index == 0:
-            if self.wrap_navigation:
-                # Check for pruned blocks before wrapping
-                if self._pruned_blocks and self._session_manager is not None:
-                    # Try to load pruned block
-                    min_sequence = min(self._pruned_blocks.keys())
-                    if self._restore_pruned_blocks(min_sequence, count=1):
-                        # After restoration, the new block is at index 0
-                        # We need to find it and adjust selection
-                        self._selected_index = 0
-                        self.selected_block = self._blocks[0].info.block_id
-                        self._update_selected_visual()
-                        self.call_after_refresh(self._scroll_to_selected)
-                        return
+      # Delegate to renderable_to_strips
+      return self._renderable_to_strips(renderable, width)
+    except Exception:
+      import logging
 
-                # Wrap to last block
-                self._selected_index = len(self._blocks) - 1
-                self.selected_block = self._blocks[self._selected_index].info.block_id
-                self._update_selected_visual()
-                self.call_after_refresh(self._scroll_to_selected)
-            else:
-                # Bell at boundary
-                if self.navigation_bell:
-                    try:
-                        self.app.bell()
-                    except NoActiveAppError:
-                        pass
-            return
+      logging.getLogger(__name__).exception("Failed to convert widget to strips")
+      return None
 
-        # Move to previous block
-        self._selected_index -= 1
-        self.selected_block = self._blocks[self._selected_index].info.block_id
-        self._update_selected_visual()
-        self.call_after_refresh(self._scroll_to_selected)
+  def _add_role_label_to_strips(
+    self,
+    strips: list[Strip],
+    role: str,
+    width: int,
+    is_selected: bool,
+  ) -> list[Strip]:
+    """Add role label prefix to first strip line.
 
-    def action_nav_next_block(self) -> None:
-        """Navigate to the next block (Alt+Down).
+    Args:
+        strips: The strips to modify.
+        role: The role of the message.
+        width: The width to render at.
+        is_selected: Whether this block is selected.
 
-        Selects the next message block. If no block is selected,
-        selects the first block. At the last block, wraps to the first
-        block if wrap_navigation is True, otherwise plays a bell.
-        """
-        if not self._blocks:
-            return
+    Returns:
+        List of Strip objects with role label prepended to first line.
+    """
+    if not strips:
+      return strips
 
-        # If no selection, select the first block
-        if self._selected_index < 0:
+    # Get role label from configuration
+    role_config = self._role_labels.get(role)
+    role_label = role_config["label"] if role_config else role
+    base_style = role_config["style"] if role_config else Style(bold=True, color="grey62")
+
+    # Selection overrides style
+    if is_selected:
+      style = Style(bold=True, color="cyan")
+    else:
+      style = base_style
+
+    # Create label text and render WITHOUT padding to full width
+    label_text = Text(f"[{role_label}] ", style=style)
+    # Create a console just for rendering options (not for width-based padding)
+    console = Console()
+    # Use __rich_console__ to get segments without width padding
+    render_iter = label_text.__rich_console__(console, console.options)
+    label_segments: list[RichSegment] = []
+    for segment in render_iter:
+      # Segments are 3-tuples: (text, style, control)
+      # Or 2-tuples: (text, style)
+      if len(segment) >= 2:
+        text = segment[0]
+        seg_style = segment[1]
+        # Skip newline-only segments
+        if text == "\n":
+          continue
+        control = segment[2] if len(segment) >= 3 else None
+        label_segments.append(RichSegment(text, seg_style, control))
+      # Skip 1-tuple newlines (control-only segments)
+
+    if not label_segments:
+      return strips
+
+    first_strip = strips[0]
+    new_segments = label_segments + list(first_strip)
+    new_first = Strip(new_segments, width)
+
+    return [new_first] + strips[1:]
+
+  def _create_role_label_strip(
+    self,
+    role: str,
+    width: int,
+    is_selected: bool,
+  ) -> Strip:
+    """Create a strip containing just the role label.
+
+    Args:
+        role: The role of the message.
+        width: The width to render at.
+        is_selected: Whether this block is selected.
+
+    Returns:
+        A Strip containing the role label on its own line.
+    """
+    # Get role label from configuration
+    role_config = self._role_labels.get(role)
+    role_label = role_config["label"] if role_config else role
+    base_style = role_config["style"] if role_config else Style(bold=True, color="grey62")
+
+    # Selection overrides style
+    if is_selected:
+      style = Style(bold=True, color="cyan")
+    else:
+      style = base_style
+
+    # Create label text and render with proper width padding
+    label_text = Text(f"[{role_label}]", style=style)
+    # Use Console with width to get properly padded lines
+    console = Console(width=width)
+    lines = list(console.render_lines(label_text))
+
+    if not lines:
+      # Fallback: create a blank strip if rendering fails
+      return Strip.blank(width, getattr(self, "rich_style", None))
+
+    # Convert the first (and only) line to a Strip
+    # Use only the first line since the label is a single line
+    line = lines[0]
+    segments = []
+    for segment in line:
+      if len(segment) == 2:
+        segments.append(RichSegment(segment[0], segment[1], None))
+      else:
+        segments.append(segment)
+
+    return Strip(segments, width)
+
+  def _rerender_all_blocks(self) -> None:
+    """Re-render all blocks with current width."""
+    width = self._get_content_width()
+
+    # Build new strips in temporary lists to avoid race conditions with render_line.
+    # During resize, Textual may call render_line while we're rebuilding, so we
+    # must ensure _strips is always in a consistent state.
+    new_strips: list[Strip] = []
+    new_cumulative_heights: list[int] = []
+    new_total_lines = 0
+
+    for i, block in enumerate(self._blocks):
+      is_selected = i == self._selected_index
+      block_strips = self._render_block_to_strips(block, width, is_selected=is_selected)
+      block.line_count = len(block_strips)
+      new_strips.extend(block_strips)
+      new_total_lines += block.line_count
+      new_cumulative_heights.append(new_total_lines)
+
+    # Atomic swap of all data at once
+    self._strips = new_strips
+    self._cumulative_heights = new_cumulative_heights
+    self._total_lines = new_total_lines
+    self._last_width = width
+    # Use actual content region width for virtual size
+    region = self.scrollable_content_region
+    vwidth = region.width if region and region.width > 0 else width
+    self.virtual_size = Size(vwidth, self._total_lines)
+
+  def watch_scroll_y(self, old: float, new: float) -> None:
+    """Watch for scroll position changes to manage auto_scroll state.
+
+    Args:
+        old: Previous scroll position.
+        new: Current scroll position.
+    """
+    # Call parent's watch_scroll_y to ensure ScrollView updates properly
+    super().watch_scroll_y(old, new)
+    self._update_auto_scroll_from_scroll_position()
+    # Check if we need to restore pruned blocks when scrolling up
+    # Pass the new scroll position for testing purposes
+    self._check_and_restore_pruned_blocks(_scroll_y=new)
+
+  def on_resize(self, event: Resize) -> None:
+    """Handle resize events to re-render content with new width."""
+    new_width = self._get_content_width()
+    if new_width != self._last_width and self._blocks:
+      self._rerender_all_blocks()
+      # Force clear Textual's caches to prevent stale content
+      self.clear_cached_dimensions()
+      self._clear_arrangement_cache()
+      # Force full redraw by invalidating the entire widget region
+      self.refresh(layout=True)
+
+    self._update_auto_scroll_from_scroll_position()
+
+  def _update_auto_scroll_from_scroll_position(self) -> None:
+    """Update auto_scroll based on current scroll position."""
+    max_y = self.max_scroll_y
+    # If all content fits, auto-scroll should be enabled
+    if max_y == 0:
+      self.auto_scroll = True
+    # At or near bottom - resume auto-scroll
+    elif self.scroll_y >= max_y - 1:
+      self.auto_scroll = True
+    # Scrolled up - pause auto-scroll
+    else:
+      self.auto_scroll = False
+
+  def _check_and_restore_pruned_blocks(self, _scroll_y: float | None = None) -> None:
+    """Check if pruned blocks should be restored based on scroll position.
+
+    When the user scrolls near the top (within RESTORE_THRESHOLD lines),
+    restore pruned blocks from the session file to provide seamless UX.
+
+    The restored blocks are inserted at the top, and scroll position is
+    adjusted to maintain the user's view.
+
+    Args:
+        _scroll_y: Optional scroll position for testing. If None, uses self.scroll_y.
+    """
+    RESTORE_THRESHOLD = 10  # Lines from top to trigger restoration
+    current_scroll_y = _scroll_y if _scroll_y is not None else self.scroll_y
+
+    # Don't restore if no pruned blocks
+    if not self._pruned_blocks:
+      return
+
+    # Don't restore if already loading
+    if self._is_loading:
+      return
+
+    # Don't restore if persistence is disabled
+    if self._session_manager is None:
+      return
+
+    # Check if user is scrolling near the top
+    if current_scroll_y > RESTORE_THRESHOLD:
+      return
+
+    # Find the minimum sequence in pruned blocks (oldest pruned block)
+    min_sequence = min(self._pruned_blocks.keys())
+
+    # Get the line count of the block we're about to restore
+    # to adjust scroll position
+    block_info = self._pruned_blocks[min_sequence]
+    if isinstance(block_info, tuple):
+      _, line_count = block_info
+    else:
+      line_count = 0
+
+    # Restore the block
+    restored = self._restore_pruned_blocks(min_sequence, count=1)
+
+    # Adjust scroll position to maintain user's view
+    # After restoration, the new block is at the top, shifting everything down
+    if restored and line_count > 0:
+      try:
+        self.scroll_to(y=self.scroll_y + line_count, animate=False)
+      except NoActiveAppError:
+        # Widget not mounted - scroll adjustment will happen naturally
+        # when the widget is mounted and renders
+        pass
+
+  def watch_auto_scroll(self, old: bool, new: bool) -> None:
+    """Watch for auto_scroll changes to update visual state.
+
+    Args:
+        old: Previous auto_scroll state.
+        new: Current auto_scroll state.
+    """
+    if new:
+      self.remove_class("paused")
+    else:
+      self.add_class("paused")
+
+  def render_line(self, y: int) -> Strip:
+    """Render a single line of content using the Line API.
+
+    This method is called by Textual for each visible line on screen,
+    enabling O(1) per-line rendering regardless of total content size.
+
+    Args:
+        y: The screen y-coordinate (0 is top of visible region).
+
+    Returns:
+        A Strip containing the rendered content for this line.
+    """
+    # Get scroll offset to map screen y to data y
+    scroll_x, scroll_y = self.scroll_offset
+    # Convert to int for array indexing - scroll values can be floats
+    data_y = int(scroll_y) + y
+
+    # Get the current content width for this render pass.
+    width = self._get_content_width()
+
+    # Check bounds before accessing strips
+    if data_y < 0:
+      return Strip.blank(width, getattr(self, "rich_style", None))
+
+    # Bounds check - use len(_strips) not _total_lines for array access
+    if not self._strips or data_y >= len(self._strips):
+      return Strip.blank(width, getattr(self, "rich_style", None))
+
+    # Get the strip for this line
+    strip = self._strips[data_y]
+
+    # Handle corrupted strip (None value)
+    if strip is None:
+      return Strip.blank(width, getattr(self, "rich_style", None))
+
+    # Get the background style from the last segment for extension
+    # This ensures that when cropping/extending, the padding uses the
+    # same background color as the content, preventing visual artifacts
+    extend_style = None
+    strip_segments = list(strip)
+    if strip_segments:
+      last_seg = strip_segments[-1]
+      if last_seg.style:
+        extend_style = last_seg.style
+    if extend_style is None:
+      extend_style = getattr(self, "rich_style", None)
+
+    # Handle horizontal scrolling by cropping the strip
+    return strip.crop_extend(int(scroll_x), int(scroll_x) + width, extend_style)
+
+  def append(
+    self,
+    role: str,
+    content: str,
+    metadata: dict[str, Any] | None = None,
+  ) -> str:
+    """Add a new content block to the conversation.
+
+    Args:
+        role: The role of the message (user, assistant, system, tool).
+        content: The text content of the message.
+        metadata: Optional metadata dictionary for custom application data.
+
+    Returns:
+        The unique ID of the created block.
+    """
+    block_id = f"{self._session_uuid}-{self._sequence_counter}"
+    sequence = self._sequence_counter
+    self._sequence_counter += 1
+
+    # Get current width for rendering
+    width = self._get_content_width()
+
+    # Check if width has changed since last render - re-render all if so
+    if self._last_width != 0 and width != self._last_width:
+      # Width changed, need to re-render everything at new width
+      self._rerender_all_blocks()
+      # Now append the new block at the new width
+      width = self._get_content_width()
+
+    # Create the BlockInfo and BlockData
+    info = BlockInfo(
+      block_id=block_id,
+      role=role,
+      content=content,
+      metadata=metadata if metadata is not None else {},
+      timestamp=datetime.now(timezone.utc),
+      sequence=sequence,
+    )
+    block = _BlockData(info=info)
+    self._blocks.append(block)
+
+    # Save block to session file if persistence is enabled
+    if self._session_manager is not None:
+      self._session_manager.save_block(info)
+
+    # Prune oldest blocks if threshold exceeded
+    if self._should_prune():
+      self._prune_oldest_blocks()
+
+    # Update the block index for O(1) lookup
+    self._block_index[block_id] = len(self._blocks) - 1
+
+    # Render the block to strips
+    block_strips = self._render_block_to_strips(block, width)
+    block.line_count = len(block_strips)
+
+    # Append to strips list
+    self._strips.extend(block_strips)
+
+    # Update cumulative heights and total lines
+    self._total_lines += block.line_count
+    self._cumulative_heights.append(self._total_lines)
+
+    # Update virtual size for scrolling
+    # Use the actual content region width if available, otherwise use the render width
+    region = self.scrollable_content_region
+    vwidth = region.width if region and region.width > 0 else width
+    self.virtual_size = Size(vwidth, self._total_lines)
+
+    # Update last width
+    self._last_width = width
+
+    # Auto-scroll to end if enabled
+    if self.auto_scroll:
+      self.call_after_refresh(self.scroll_end, animate=False)
+
+    # Refresh to trigger redraw
+    self.refresh()
+
+    return block_id
+
+  def clear(self) -> None:
+    """Clear all content blocks from the conversation.
+
+    Note: This does NOT reset the sequence counter or session UUID.
+    Block IDs will continue from the current sequence number.
+    """
+    self._blocks.clear()
+    self._strips.clear()
+    self._cumulative_heights.clear()
+    self._block_index.clear()
+    self._pruned_blocks.clear()
+    self._total_lines = 0
+    self._last_width = 0
+    self.virtual_size = Size(0, 0)
+    # Reset selection state
+    self._selected_index = -1
+    self.selected_block = None
+    self.refresh()
+
+  @property
+  def block_count(self) -> int:
+    """Return the number of content blocks in the conversation.
+
+    Returns:
+        The number of content blocks.
+    """
+    return len(self._blocks)
+
+  @property
+  def selected_block_index(self) -> int | None:
+    """Return the 0-indexed position of the selected block.
+
+    Returns:
+        The index of the selected block, or None if no selection.
+    """
+    if self._selected_index < 0:
+      return None
+    return self._selected_index
+
+  @property
+  def selected_block_info(self) -> BlockInfo | None:
+    """Return the BlockInfo for the selected block.
+
+    Returns:
+        The BlockInfo if a block is selected, None otherwise.
+    """
+    if self._selected_index < 0 or self._selected_index >= len(self._blocks):
+      return None
+    return self._blocks[self._selected_index].info
+
+  def get_block(self, block_id: str) -> BlockInfo | None:
+    """Get block by ID. O(1) performance for in-memory blocks.
+
+    Falls back to file lookup for pruned blocks.
+
+    Args:
+        block_id: The unique identifier of the block.
+
+    Returns:
+        The BlockInfo if found, None otherwise.
+    """
+    # Try in-memory first
+    if block_id in self._block_index:
+      index = self._block_index[block_id]
+      return self._blocks[index].info
+
+    # Fall back to file lookup for pruned blocks
+    if self._session_manager is not None:
+      # Extract sequence number from block_id (format: {session_uuid}-{sequence})
+      try:
+        sequence = int(block_id.split("-")[-1])
+        # Check if this block is pruned
+        if sequence in self._pruned_blocks:
+          return self._session_manager.load_block_by_sequence(self._session_uuid, sequence)
+      except (ValueError, IndexError):
+        pass
+
+    return None
+
+  def get_block_at_index(self, index: int) -> BlockInfo | None:
+    """Get block by sequence position. O(1) performance.
+
+    Args:
+        index: The 0-indexed position in the conversation.
+
+    Returns:
+        The BlockInfo if found, None otherwise.
+    """
+    if 0 <= index < len(self._blocks):
+      return self._blocks[index].info
+    return None
+
+  def get_block_id_at_line(self, line: int) -> str | None:
+    """Get the block ID at a specific line index.
+
+    Uses binary search on cumulative heights for O(log n) lookup.
+
+    Args:
+        line: The line index (0-based).
+
+    Returns:
+        The block ID if found, None otherwise.
+    """
+    if line < 0 or line >= self._total_lines or not self._cumulative_heights:
+      return None
+
+    # Binary search to find which block this line belongs to
+    block_index = bisect_right(self._cumulative_heights, line)
+    if 0 <= block_index < len(self._blocks):
+      return self._blocks[block_index].info.block_id
+    return None
+
+  def action_scroll_up(self) -> None:
+    """Scroll up by one line."""
+    self.scroll_to(y=self.scroll_y - 1, animate=False)
+
+  def action_scroll_down(self) -> None:
+    """Scroll down by one line."""
+    self.scroll_to(y=self.scroll_y + 1, animate=False)
+
+  def action_page_up(self) -> None:
+    """Scroll up by one page."""
+    self.scroll_page_up()
+
+  def action_page_down(self) -> None:
+    """Scroll down by one page."""
+    self.scroll_page_down()
+
+  def action_scroll_home(self) -> None:
+    """Scroll to the start of the conversation."""
+    self.scroll_home()
+
+  def action_scroll_end(self) -> None:
+    """Scroll to the end of the conversation."""
+    self.scroll_end()
+
+  def action_nav_prev_block(self) -> None:
+    """Navigate to the previous block (Alt+Up).
+
+    Selects the previous message block. If no block is selected,
+    selects the last block. At the first block, wraps to the last
+    block if wrap_navigation is True, otherwise plays a bell.
+    """
+    if not self._blocks:
+      return
+
+    # If no selection, select the last block
+    if self._selected_index < 0:
+      self._selected_index = len(self._blocks) - 1
+      self.selected_block = self._blocks[self._selected_index].info.block_id
+      self._update_selected_visual()
+      self.call_after_refresh(self._scroll_to_selected)
+      return
+
+    # If at first block
+    if self._selected_index == 0:
+      if self.wrap_navigation:
+        # Check for pruned blocks before wrapping
+        if self._pruned_blocks and self._session_manager is not None:
+          # Try to load pruned block
+          min_sequence = min(self._pruned_blocks.keys())
+          if self._restore_pruned_blocks(min_sequence, count=1):
+            # After restoration, the new block is at index 0
+            # We need to find it and adjust selection
             self._selected_index = 0
             self.selected_block = self._blocks[0].info.block_id
             self._update_selected_visual()
             self.call_after_refresh(self._scroll_to_selected)
             return
 
-        # If at last block
-        if self._selected_index >= len(self._blocks) - 1:
-            if self.wrap_navigation:
-                # Wrap to first block
-                self._selected_index = 0
-                self.selected_block = self._blocks[0].info.block_id
-                self._update_selected_visual()
-                self.call_after_refresh(self._scroll_to_selected)
-            else:
-                # Bell at boundary
-                if self.navigation_bell:
-                    try:
-                        self.app.bell()
-                    except NoActiveAppError:
-                        pass
-            return
-
-        # Move to next block
-        self._selected_index += 1
+        # Wrap to last block
+        self._selected_index = len(self._blocks) - 1
         self.selected_block = self._blocks[self._selected_index].info.block_id
         self._update_selected_visual()
         self.call_after_refresh(self._scroll_to_selected)
-
-    def action_deselect_block(self) -> None:
-        """Clear the block selection (Escape)."""
-        self._selected_index = -1
-        self.selected_block = None
-        self._update_selected_visual()
-
-    def watch_selected_block(self, old: str | None, new: str | None) -> None:
-        """React to selected_block changes.
-
-        Args:
-            old: Previous selected block ID.
-            new: New selected block ID.
-        """
-        if new is None:
-            self._selected_index = -1
-        else:
-            # Find block by ID in _block_index
-            if new in self._block_index:
-                self._selected_index = self._block_index[new]
-            else:
-                # Block not found - clear selection
-                self._selected_index = -1
-        self._update_selected_visual()
-
-    def _update_selected_visual(self) -> None:
-        """Update visual state for selection change.
-
-        Re-renders strips to apply selection highlighting.
-        """
-        if self._blocks and self._last_width > 0:
-            self._rerender_all_blocks()
-            self.refresh()
-
-    async def _scroll_to_selected(self) -> None:
-        """Scroll to center the selected block in the viewport."""
-        if self._selected_index < 0 or not self._blocks:
-            return
-
-        # Get the line range for the selected block
-        if self._selected_index >= len(self._cumulative_heights):
-            return
-
-        # Calculate block's start line
-        if self._selected_index == 0:
-            block_start_line = 0
-        else:
-            block_start_line = self._cumulative_heights[self._selected_index - 1]
-
-        # Calculate block's end line
-        block_end_line = self._cumulative_heights[self._selected_index]
-
-        # Calculate block height
-        block_height = block_end_line - block_start_line
-
-        # Get viewport height
-        region = self.scrollable_content_region
-        if region is None:
-            return
-        viewport_height = region.height
-
-        # Calculate center position
-        # We want the block to be centered if possible
-        center_y = block_start_line + (block_height / 2) - (viewport_height / 2)
-
-        # Clamp to valid range
-        max_y = max(0, self._total_lines - viewport_height)
-        target_y = max(0, min(center_y, max_y))
-
-        try:
-            self.scroll_to(y=int(target_y), animate=True, duration=0.2)
-        except NoActiveAppError:
-            # Widget not mounted - can't scroll
+      else:
+        # Bell at boundary
+        if self.navigation_bell:
+          try:
+            self.app.bell()
+          except NoActiveAppError:
             pass
+      return
 
-    @classmethod
-    def resume(
-        cls,
-        session_id: str,
-        session_dir: Path | None = None,
-        max_blocks_in_memory: int = 100,
-        **kwargs: Any,
-    ) -> Conversation:
-        """Resume a conversation from a saved session.
+    # Move to previous block
+    self._selected_index -= 1
+    self.selected_block = self._blocks[self._selected_index].info.block_id
+    self._update_selected_visual()
+    self.call_after_refresh(self._scroll_to_selected)
 
-        Args:
-            session_id: The session ID to resume.
-            session_dir: Optional session directory override.
-            max_blocks_in_memory: Maximum blocks to keep in memory (0 = unlimited).
-                When the session has more blocks than this threshold, only the
-                newest blocks are loaded into memory. Default: 100.
-            **kwargs: Additional arguments passed to Conversation constructor.
+  def action_nav_next_block(self) -> None:
+    """Navigate to the next block (Alt+Down).
 
-        Returns:
-            A Conversation instance with restored blocks.
+    Selects the next message block. If no block is selected,
+    selects the first block. At the last block, wraps to the first
+    block if wrap_navigation is True, otherwise plays a bell.
+    """
+    if not self._blocks:
+      return
 
-        Raises:
-            SessionError: If session file not found or invalid.
-        """
-        from clitic.session import SessionManager
+    # If no selection, select the first block
+    if self._selected_index < 0:
+      self._selected_index = 0
+      self.selected_block = self._blocks[0].info.block_id
+      self._update_selected_visual()
+      self.call_after_refresh(self._scroll_to_selected)
+      return
 
-        manager = SessionManager(session_dir=session_dir)
-        blocks = manager.resume_session(session_id)
+    # If at last block
+    if self._selected_index >= len(self._blocks) - 1:
+      if self.wrap_navigation:
+        # Wrap to first block
+        self._selected_index = 0
+        self.selected_block = self._blocks[0].info.block_id
+        self._update_selected_visual()
+        self.call_after_refresh(self._scroll_to_selected)
+      else:
+        # Bell at boundary
+        if self.navigation_bell:
+          try:
+            self.app.bell()
+          except NoActiveAppError:
+            pass
+      return
 
-        # Create conversation with the resumed session UUID
-        # Enable persistence so that get_block can load pruned blocks from file
-        conversation = cls(
-            session_uuid=session_id,
-            persistence_enabled=True,
-            session_dir=session_dir,
-            max_blocks_in_memory=max_blocks_in_memory,
-            **kwargs,
-        )
+    # Move to next block
+    self._selected_index += 1
+    self.selected_block = self._blocks[self._selected_index].info.block_id
+    self._update_selected_visual()
+    self.call_after_refresh(self._scroll_to_selected)
 
-        # Restore sequence counter from last block
-        conversation._sequence_counter = max(b.sequence for b in blocks) + 1 if blocks else 0
+  def action_deselect_block(self) -> None:
+    """Clear the block selection (Escape)."""
+    self._selected_index = -1
+    self.selected_block = None
+    self._update_selected_visual()
 
-        # Determine which blocks to keep in memory
-        total_blocks = len(blocks)
-        if max_blocks_in_memory > 0 and total_blocks > max_blocks_in_memory:
-            # Keep only the newest blocks in memory
-            blocks_to_prune = total_blocks - max_blocks_in_memory
-            pruned_blocks = blocks[:blocks_to_prune]
-            blocks_to_keep = blocks[blocks_to_prune:]
+  def watch_selected_block(self, old: str | None, new: str | None) -> None:
+    """React to selected_block changes.
 
-            # Record pruned blocks
-            for block_info in pruned_blocks:
-                # We don't know the line count yet, so we store 0 as placeholder
-                # The actual line count will be calculated if the block is restored
-                conversation._pruned_blocks[block_info.sequence] = (block_info.block_id, 0)
+    Args:
+        old: Previous selected block ID.
+        new: New selected block ID.
+    """
+    if new is None:
+      self._selected_index = -1
+    else:
+      # Find block by ID in _block_index
+      if new in self._block_index:
+        self._selected_index = self._block_index[new]
+      else:
+        # Block not found - clear selection
+        self._selected_index = -1
+    self._update_selected_visual()
 
-            # Only restore the newest blocks
-            blocks = blocks_to_keep
+  def _update_selected_visual(self) -> None:
+    """Update visual state for selection change.
 
-        # Restore blocks (using internal append to avoid triggering persistence)
-        for block_info in blocks:
-            # Create _BlockData directly
-            block = _BlockData(info=block_info)
-            conversation._blocks.append(block)
-            conversation._block_index[block_info.block_id] = len(conversation._blocks) - 1
+    Re-renders strips to apply selection highlighting.
+    """
+    if self._blocks and self._last_width > 0:
+      self._rerender_all_blocks()
+      self.refresh()
 
-        # Render all blocks for display
-        if blocks:
-            conversation._rerender_all_blocks()
+  async def _scroll_to_selected(self) -> None:
+    """Scroll to center the selected block in the viewport."""
+    if self._selected_index < 0 or not self._blocks:
+      return
 
-        return conversation
+    # Get the line range for the selected block
+    if self._selected_index >= len(self._cumulative_heights):
+      return
 
-    def get_session_manager(self) -> SessionManager | None:
-        """Get the session manager, if persistence is enabled.
+    # Calculate block's start line
+    if self._selected_index == 0:
+      block_start_line = 0
+    else:
+      block_start_line = self._cumulative_heights[self._selected_index - 1]
 
-        Returns:
-            The SessionManager if persistence is enabled, None otherwise.
-        """
-        return self._session_manager
+    # Calculate block's end line
+    block_end_line = self._cumulative_heights[self._selected_index]
+
+    # Calculate block height
+    block_height = block_end_line - block_start_line
+
+    # Get viewport height
+    region = self.scrollable_content_region
+    if region is None:
+      return
+    viewport_height = region.height
+
+    # Calculate center position
+    # We want the block to be centered if possible
+    center_y = block_start_line + (block_height / 2) - (viewport_height / 2)
+
+    # Clamp to valid range
+    max_y = max(0, self._total_lines - viewport_height)
+    target_y = max(0, min(center_y, max_y))
+
+    try:
+      self.scroll_to(y=int(target_y), animate=True, duration=0.2)
+    except NoActiveAppError:
+      # Widget not mounted - can't scroll
+      pass
+
+  @classmethod
+  def resume(
+    cls,
+    session_id: str,
+    session_dir: Path | None = None,
+    max_blocks_in_memory: int = 100,
+    **kwargs: Any,
+  ) -> Conversation:
+    """Resume a conversation from a saved session.
+
+    Args:
+        session_id: The session ID to resume.
+        session_dir: Optional session directory override.
+        max_blocks_in_memory: Maximum blocks to keep in memory (0 = unlimited).
+            When the session has more blocks than this threshold, only the
+            newest blocks are loaded into memory. Default: 100.
+        **kwargs: Additional arguments passed to Conversation constructor.
+
+    Returns:
+        A Conversation instance with restored blocks.
+
+    Raises:
+        SessionError: If session file not found or invalid.
+    """
+    from clitic.session import SessionManager
+
+    manager = SessionManager(session_dir=session_dir)
+    blocks = manager.resume_session(session_id)
+
+    # Create conversation with the resumed session UUID
+    # Enable persistence so that get_block can load pruned blocks from file
+    conversation = cls(
+      session_uuid=session_id,
+      persistence_enabled=True,
+      session_dir=session_dir,
+      max_blocks_in_memory=max_blocks_in_memory,
+      **kwargs,
+    )
+
+    # Restore sequence counter from last block
+    conversation._sequence_counter = max(b.sequence for b in blocks) + 1 if blocks else 0
+
+    # Determine which blocks to keep in memory
+    total_blocks = len(blocks)
+    if max_blocks_in_memory > 0 and total_blocks > max_blocks_in_memory:
+      # Keep only the newest blocks in memory
+      blocks_to_prune = total_blocks - max_blocks_in_memory
+      pruned_blocks = blocks[:blocks_to_prune]
+      blocks_to_keep = blocks[blocks_to_prune:]
+
+      # Record pruned blocks
+      for block_info in pruned_blocks:
+        # We don't know the line count yet, so we store 0 as placeholder
+        # The actual line count will be calculated if the block is restored
+        conversation._pruned_blocks[block_info.sequence] = (block_info.block_id, 0)
+
+      # Only restore the newest blocks
+      blocks = blocks_to_keep
+
+    # Restore blocks (using internal append to avoid triggering persistence)
+    for block_info in blocks:
+      # Create _BlockData directly
+      block = _BlockData(info=block_info)
+      conversation._blocks.append(block)
+      conversation._block_index[block_info.block_id] = len(conversation._blocks) - 1
+
+    # Render all blocks for display
+    if blocks:
+      conversation._rerender_all_blocks()
+
+    return conversation
+
+  def get_session_manager(self) -> SessionManager | None:
+    """Get the session manager, if persistence is enabled.
+
+    Returns:
+        The SessionManager if persistence is enabled, None otherwise.
+    """
+    return self._session_manager

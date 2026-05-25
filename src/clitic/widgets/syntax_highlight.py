@@ -96,7 +96,7 @@ class SyntaxHighlight(Widget):
       return get_lexer_by_name(self.language)
     except ClassNotFound:
       logger.debug(f"Unknown language: {self.language}, using TextLexer")
-      return TextLexer()
+      return cast("Lexer", TextLexer())
 
   def _get_theme(self) -> str:
     """Get the Pygments theme to use for highlighting.

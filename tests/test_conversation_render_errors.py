@@ -156,7 +156,11 @@ class TestCorruptedStripsList:
     if conversation._strips and conversation._total_lines > 0:
       # Remove some strips to create mismatch
       strips_to_remove = min(len(conversation._strips), 2)
-      conversation._strips = conversation._strips[:-strips_to_remove] if strips_to_remove < len(conversation._strips) else []
+      conversation._strips = (
+        conversation._strips[:-strips_to_remove]
+        if strips_to_remove < len(conversation._strips)
+        else []
+      )
 
       # Accessing a line that should exist but strip is missing
       # Should return blank strip gracefully

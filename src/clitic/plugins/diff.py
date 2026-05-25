@@ -227,7 +227,15 @@ class DiffPlugin(ContentPlugin):
       return _DIFF_REMOVED_PREFIX_STYLE
 
     # Git extended headers (e.g., "diff --git", "index ", "new file mode")
-    if line.startswith("diff ") or line.startswith("index ") or line.startswith("new ") or line.startswith("deleted ") or line.startswith("rename ") or line.startswith("similarity ") or line.startswith("dissimilarity "):
+    if (
+      line.startswith("diff ")
+      or line.startswith("index ")
+      or line.startswith("new ")
+      or line.startswith("deleted ")
+      or line.startswith("rename ")
+      or line.startswith("similarity ")
+      or line.startswith("dissimilarity ")
+    ):
       return _DIFF_HEADER_STYLE
 
     # No newline marker

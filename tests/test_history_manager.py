@@ -27,17 +27,13 @@ class TestHistoryEntry:
 
   def test_frozen_dataclass(self) -> None:
     """HistoryEntry should be immutable."""
-    entry = HistoryEntry(
-      text="test", timestamp=datetime.now(timezone.utc)
-    )
+    entry = HistoryEntry(text="test", timestamp=datetime.now(timezone.utc))
     with pytest.raises(FrozenInstanceError):
       entry.text = "modified"  # type: ignore[misc]
 
   def test_metadata_default(self) -> None:
     """HistoryEntry should have empty metadata by default."""
-    entry = HistoryEntry(
-      text="test", timestamp=datetime.now(timezone.utc)
-    )
+    entry = HistoryEntry(text="test", timestamp=datetime.now(timezone.utc))
     assert entry.metadata == {}
 
   def test_repr_truncation(self) -> None:
@@ -48,9 +44,7 @@ class TestHistoryEntry:
 
   def test_repr_short_text(self) -> None:
     """__repr__ should not truncate short text."""
-    entry = HistoryEntry(
-      text="short", timestamp=datetime.now(timezone.utc)
-    )
+    entry = HistoryEntry(text="short", timestamp=datetime.now(timezone.utc))
     assert "short" in repr(entry)
     assert "..." not in repr(entry)
 
@@ -77,9 +71,7 @@ class TestHistoryManagerInstantiation:
 
   def test_max_entries_parameter(self, tmp_path: Path) -> None:
     """HistoryManager should accept max_entries parameter."""
-    manager = HistoryManager(
-      history_file=tmp_path / "history.jsonl", max_entries=100
-    )
+    manager = HistoryManager(history_file=tmp_path / "history.jsonl", max_entries=100)
     assert manager.max_entries == 100
 
   def test_loads_existing_history(self, tmp_path: Path) -> None:
@@ -162,9 +154,7 @@ class TestHistoryManagerAdd:
 
   def test_add_trims_to_max_entries(self, tmp_path: Path) -> None:
     """add() should trim entries to max_entries."""
-    manager = HistoryManager(
-      history_file=tmp_path / "history.jsonl", max_entries=3
-    )
+    manager = HistoryManager(history_file=tmp_path / "history.jsonl", max_entries=3)
     manager.add("first")
     manager.add("second")
     manager.add("third")
@@ -452,9 +442,7 @@ class TestHistoryManagerThreadSafety:
         except Exception as e:
           errors.append(e)
 
-    threads = [
-      threading.Thread(target=add_entries, args=(i,)) for i in range(10)
-    ]
+    threads = [threading.Thread(target=add_entries, args=(i,)) for i in range(10)]
     for t in threads:
       t.start()
     for t in threads:
@@ -573,9 +561,7 @@ class TestHistoryManagerEdgeCases:
 
   def test_max_entries_zero_unlimited(self, tmp_path: Path) -> None:
     """max_entries=0 should allow unlimited entries."""
-    manager = HistoryManager(
-      history_file=tmp_path / "history.jsonl", max_entries=0
-    )
+    manager = HistoryManager(history_file=tmp_path / "history.jsonl", max_entries=0)
     for i in range(100):
       manager.add(f"entry-{i}")
 

@@ -346,6 +346,7 @@ class TestDiffPluginRenderToStrips:
     plugin = DiffPlugin()
     strips = plugin.render_to_strips("+added line", 40)
     from textual.strip import Strip
+
     assert isinstance(strips, list)
     assert len(strips) == 1
     assert isinstance(strips[0], Strip)
@@ -436,4 +437,3 @@ class TestDiffPluginRenderToStrips:
     assert segments[1].text == " " * 39
     assert segments[1].style == Style(bgcolor="#e3fedf")
     assert len(segments) == 2
-

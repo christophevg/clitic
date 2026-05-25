@@ -234,4 +234,3 @@ class TestCodePluginIntegration:
     assert isinstance(syntax, Syntax)
     assert syntax.code == code
     assert isinstance(syntax.lexer, PythonLexer)
-

@@ -22,13 +22,13 @@ from clitic import App, Conversation, HistoryManager, InputBar, __version__
 from clitic.plugins import CodePlugin, DiffPlugin, MarkdownPlugin
 
 if TYPE_CHECKING:
-    pass
+  pass
 
 
 class ShowcaseApp(App):
-    """Interactive showcase application for clitic."""
+  """Interactive showcase application for clitic."""
 
-    CSS = """
+  CSS = """
   /* Light theme colors */
   $accent: #3B82F6;
   $accent-dark: #2563EB;
@@ -64,223 +64,220 @@ class ShowcaseApp(App):
   }
   """
 
-    # Global key bindings that work from any focused widget
-    BINDINGS = [
-        ("alt+up", "nav_prev_block", "Previous message"),
-        ("alt+down", "nav_next_block", "Next message"),
-        ("escape", "deselect_block", "Clear selection"),
-    ]
+  # Global key bindings that work from any focused widget
+  BINDINGS = [
+    ("alt+up", "nav_prev_block", "Previous message"),
+    ("alt+down", "nav_next_block", "Next message"),
+    ("escape", "deselect_block", "Clear selection"),
+  ]
 
-    def __init__(self, conversation: Conversation | None = None) -> None:
-        """Initialize the showcase app.
+  def __init__(self, conversation: Conversation | None = None) -> None:
+    """Initialize the showcase app.
 
-        Args:
-            conversation: Optional pre-configured Conversation widget.
-        """
-        super().__init__(title=f"clitic v{__version__} Showcase")
-        self._message_count = 0
-        self._conversation = conversation
-        self._history = HistoryManager()
-        # Register plugins for content rendering
-        self.register_plugin(CodePlugin())
-        self.register_plugin(DiffPlugin())
-        self.register_plugin(MarkdownPlugin())
+    Args:
+        conversation: Optional pre-configured Conversation widget.
+    """
+    super().__init__(title=f"clitic v{__version__} Showcase")
+    self._message_count = 0
+    self._conversation = conversation
+    self._history = HistoryManager()
+    # Register plugins for content rendering
+    self.register_plugin(CodePlugin())
+    self.register_plugin(DiffPlugin())
+    self.register_plugin(MarkdownPlugin())
 
-    def compose(self) -> ComposeResult:
-        """Compose the app layout."""
-        yield Header()
-        if self._conversation is not None:
-            yield self._conversation
-        else:
-            yield Conversation(
-                id="messages",
-                plugins=self.get_plugins(),
-            )
-        # Note: Use submit_on_enter=False to make Shift+Enter submit and Enter insert newline
-        yield InputBar(
-            placeholder="Type your message here...",
-            theme="github_light",
-            history=self._history,
-        )
-        yield Footer()
+  def compose(self) -> ComposeResult:
+    """Compose the app layout."""
+    yield Header()
+    if self._conversation is not None:
+      yield self._conversation
+    else:
+      yield Conversation(
+        id="messages",
+        plugins=self.get_plugins(),
+      )
+    # Note: Use submit_on_enter=False to make Shift+Enter submit and Enter insert newline
+    yield InputBar(
+      placeholder="Type your message here...",
+      theme="github_light",
+      history=self._history,
+    )
+    yield Footer()
 
-    def on_mount(self) -> None:
-        """Focus the input bar when the app starts and add welcome message."""
-        conversation = self.query_one(Conversation)
+  def on_mount(self) -> None:
+    """Focus the input bar when the app starts and add welcome message."""
+    conversation = self.query_one(Conversation)
 
-        # Demonstrate session_id access
-        session_info = f"Session ID: {conversation.session_id[:8]}..."
+    # Demonstrate session_id access
+    session_info = f"Session ID: {conversation.session_id[:8]}..."
 
-        # Add welcome messages demonstrating metadata usage
-        conversation.append(
-            "system",
-            f"Welcome to clitic v{__version__}!",
-            metadata={"type": "welcome", "version": __version__},
-        )
-        conversation.append("system", session_info, metadata={"type": "info"})
+    # Add welcome messages demonstrating metadata usage
+    conversation.append(
+      "system",
+      f"Welcome to clitic v{__version__}!",
+      metadata={"type": "welcome", "version": __version__},
+    )
+    conversation.append("system", session_info, metadata={"type": "info"})
 
-        # Demonstrate markdown rendering
-        conversation.append(
-            "assistant",
-            "# Markdown Support\n\n"
-            "This message demonstrates **markdown** rendering.\n\n"
-            "Features:\n"
-            "- Headers\n"
-            "- **Bold** and *italic* text\n"
-            "- Lists\n"
-            "- Code blocks\n\n"
-            "```python\n"
-            "print('Hello, World!')\n"
-            "```",
-            metadata={"content_type": "text/markdown"},
-        )
+    # Demonstrate markdown rendering
+    conversation.append(
+      "assistant",
+      "# Markdown Support\n\n"
+      "This message demonstrates **markdown** rendering.\n\n"
+      "Features:\n"
+      "- Headers\n"
+      "- **Bold** and *italic* text\n"
+      "- Lists\n"
+      "- Code blocks\n\n"
+      "```python\n"
+      "print('Hello, World!')\n"
+      "```",
+      metadata={"content_type": "text/markdown"},
+    )
 
-        # Demonstrate code rendering with CodePlugin
-        conversation.append(
-            "assistant",
-            "def fibonacci(n: int) -> int:\n"
-            "    \"\"\"Calculate the nth Fibonacci number.\"\"\"\n"
-            "    if n <= 1:\n"
-            "        return n\n"
-            "    return fibonacci(n - 1) + fibonacci(n - 2)\n"
-            "\n"
-            "# Example usage\n"
-            "for i in range(10):\n"
-            "    print(f\"F({i}) = {fibonacci(i)}\")",
-            metadata={"content_type": "code/python"},
-        )
+    # Demonstrate code rendering with CodePlugin
+    conversation.append(
+      "assistant",
+      "def fibonacci(n: int) -> int:\n"
+      '    """Calculate the nth Fibonacci number."""\n'
+      "    if n <= 1:\n"
+      "        return n\n"
+      "    return fibonacci(n - 1) + fibonacci(n - 2)\n"
+      "\n"
+      "# Example usage\n"
+      "for i in range(10):\n"
+      '    print(f"F({i}) = {fibonacci(i)}")',
+      metadata={"content_type": "code/python"},
+    )
 
-        # Demonstrate diff rendering with DiffPlugin
-        conversation.append(
-            "assistant",
-            "diff --git a/example.py b/example.py\n"
-            "index 1234567..abcdefg 100644\n"
-            "--- a/example.py\n"
-            "+++ b/example.py\n"
-            "@@ -10,7 +10,7 @@\n"
-            " def calculate(x):\n"
-            "-    return x * 2\n"
-            "+    return x * 3\n"
-            "\n"
-            " def helper():\n"
-            "     pass",
-            metadata={"content_type": "text/x-diff"},
-        )
+    # Demonstrate diff rendering with DiffPlugin
+    conversation.append(
+      "assistant",
+      "diff --git a/example.py b/example.py\n"
+      "index 1234567..abcdefg 100644\n"
+      "--- a/example.py\n"
+      "+++ b/example.py\n"
+      "@@ -10,7 +10,7 @@\n"
+      " def calculate(x):\n"
+      "-    return x * 2\n"
+      "+    return x * 3\n"
+      "\n"
+      " def helper():\n"
+      "     pass",
+      metadata={"content_type": "text/x-diff"},
+    )
 
-        # Demonstrate block retrieval
-        self.query_one(InputBar).focus()
+    # Demonstrate block retrieval
+    self.query_one(InputBar).focus()
 
-    def action_nav_prev_block(self) -> None:
-        """Navigate to previous block in conversation (global binding)."""
-        conversation = self.query_one(Conversation)
-        conversation.action_nav_prev_block()
+  def action_nav_prev_block(self) -> None:
+    """Navigate to previous block in conversation (global binding)."""
+    conversation = self.query_one(Conversation)
+    conversation.action_nav_prev_block()
 
-    def action_nav_next_block(self) -> None:
-        """Navigate to next block in conversation (global binding)."""
-        conversation = self.query_one(Conversation)
-        conversation.action_nav_next_block()
+  def action_nav_next_block(self) -> None:
+    """Navigate to next block in conversation (global binding)."""
+    conversation = self.query_one(Conversation)
+    conversation.action_nav_next_block()
 
-    def action_deselect_block(self) -> None:
-        """Clear selection in conversation (global binding)."""
-        conversation = self.query_one(Conversation)
-        conversation.action_deselect_block()
+  def action_deselect_block(self) -> None:
+    """Clear selection in conversation (global binding)."""
+    conversation = self.query_one(Conversation)
+    conversation.action_deselect_block()
 
-    def on_input_bar_submit(self, event: InputBar.Submit) -> None:
-        """Handle InputBar submit.
+  def on_input_bar_submit(self, event: InputBar.Submit) -> None:
+    """Handle InputBar submit.
 
-        Args:
-            event: The Submit event.
-        """
-        self._message_count += 1
+    Args:
+        event: The Submit event.
+    """
+    self._message_count += 1
 
-        # Add the user's message to the conversation with metadata
-        conversation = self.query_one(Conversation)
-        user_block_id = conversation.append(
-            "user",
-            event.text,
-            metadata={"source": "user_input", "count": self._message_count},
-        )
+    # Add the user's message to the conversation with metadata
+    conversation = self.query_one(Conversation)
+    user_block_id = conversation.append(
+      "user",
+      event.text,
+      metadata={"source": "user_input", "count": self._message_count},
+    )
 
-        # Demonstrate block retrieval by ID
-        user_block = conversation.get_block(user_block_id)
-        if user_block:
-            # Access block info (demonstrating BlockInfo API)
-            relative_time = user_block.relative_timestamp
-            response_text = f"Received message #{self._message_count}!"
-            response_text += f" (sent {relative_time})"
+    # Demonstrate block retrieval by ID
+    user_block = conversation.get_block(user_block_id)
+    if user_block:
+      # Access block info (demonstrating BlockInfo API)
+      relative_time = user_block.relative_timestamp
+      response_text = f"Received message #{self._message_count}!"
+      response_text += f" (sent {relative_time})"
 
-            # Also demonstrate get_block_at_index
-            block_count = conversation.block_count
-            if block_count > 0:
-                last_block = conversation.get_block_at_index(block_count - 1)
-                if last_block:
-                    response_text += f" [Block {last_block.sequence}]"
+      # Also demonstrate get_block_at_index
+      block_count = conversation.block_count
+      if block_count > 0:
+        last_block = conversation.get_block_at_index(block_count - 1)
+        if last_block:
+          response_text += f" [Block {last_block.sequence}]"
 
-            conversation.append(
-                "clitic",
-                response_text,
-                metadata={"type": "response", "user_block_id": user_block_id},
-            )
+      conversation.append(
+        "clitic",
+        response_text,
+        metadata={"type": "response", "user_block_id": user_block_id},
+      )
 
-        # Focus back on the input
-        self.query_one(InputBar).focus()
+    # Focus back on the input
+    self.query_one(InputBar).focus()
 
 
 def main() -> None:
-    """Run the clitic showcase application."""
-    parser = argparse.ArgumentParser(
-        description="clitic - Interactive TUI showcase",
-    )
-    parser.add_argument(
-        "--resume",
-        metavar="SESSION_ID",
-        help="Resume a previous session by session ID",
-    )
-    parser.add_argument(
-        "--list-sessions",
-        action="store_true",
-        help="List available sessions",
-    )
-    parser.add_argument(
-        "--persistence",
-        action="store_true",
-        help="Enable session persistence",
-    )
+  """Run the clitic showcase application."""
+  parser = argparse.ArgumentParser(
+    description="clitic - Interactive TUI showcase",
+  )
+  parser.add_argument(
+    "--resume",
+    metavar="SESSION_ID",
+    help="Resume a previous session by session ID",
+  )
+  parser.add_argument(
+    "--list-sessions",
+    action="store_true",
+    help="List available sessions",
+  )
+  parser.add_argument(
+    "--persistence",
+    action="store_true",
+    help="Enable session persistence",
+  )
 
-    args = parser.parse_args()
+  args = parser.parse_args()
 
-    # Handle --list-sessions
-    if args.list_sessions:
-        from clitic.session import SessionManager
+  # Handle --list-sessions
+  if args.list_sessions:
+    from clitic.session import SessionManager
 
-        manager = SessionManager()
-        sessions = manager.list_sessions()
-        if not sessions:
-            print("No sessions found.")
-        else:
-            for session in sessions:
-                print(
-                    f"{session.session_id[:8]}... "
-                    f"({session.block_count} blocks, {session.updated_at})"
-                )
-        return
-
-    # Create app first to get plugins
-    app = ShowcaseApp()
-
-    # Create conversation with plugins from app
-    if args.resume:
-        conversation = Conversation.resume(args.resume)
+    manager = SessionManager()
+    sessions = manager.list_sessions()
+    if not sessions:
+      print("No sessions found.")
     else:
-        conversation = Conversation(
-            persistence_enabled=args.persistence,
-            plugins=app.get_plugins(),
-        )
+      for session in sessions:
+        print(f"{session.session_id[:8]}... ({session.block_count} blocks, {session.updated_at})")
+    return
 
-    # Set the conversation on the app
-    app._conversation = conversation
-    app.run()
+  # Create app first to get plugins
+  app = ShowcaseApp()
+
+  # Create conversation with plugins from app
+  if args.resume:
+    conversation = Conversation.resume(args.resume)
+  else:
+    conversation = Conversation(
+      persistence_enabled=args.persistence,
+      plugins=app.get_plugins(),
+    )
+
+  # Set the conversation on the app
+  app._conversation = conversation
+  app.run()
 
 
 if __name__ == "__main__":
-    main()
+  main()
